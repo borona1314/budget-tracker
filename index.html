@@ -350,6 +350,14 @@ function fmt(n){
   n = Number(n)||0;
   return '฿' + n.toLocaleString('en-US', {maximumFractionDigits:0});
 }
+function toDisplayAmount(n){
+  n = Number(n);
+  if(!n) return '';
+  return n.toLocaleString('en-US', {maximumFractionDigits:2});
+}
+function parseAmount(str){
+  return Number(String(str).replace(/,/g,'').trim()) || 0;
+}
 function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
 
 let current = new Date();
@@ -570,7 +578,7 @@ function renderCards(){
         </div>
         <div class="row-bottom">
           <div class="amount-wrap"><span class="cur">฿</span>
-            <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${rec.amount||''}" placeholder="0">
+            <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${toDisplayAmount(rec.amount)}" placeholder="0">
           </div>
         </div>
       </div>
@@ -598,7 +606,7 @@ function renderExpenses(){
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
-          <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${rec.amount||''}" placeholder="0">
+          <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${toDisplayAmount(rec.amount)}" placeholder="0">
         </div>
         <label class="paidbox"><input type="checkbox" data-id="${it.id}" data-f="paid" data-kind="exp" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
       </div>
@@ -609,7 +617,7 @@ function renderExpenses(){
   document.getElementById('expPaidV').textContent = fmt(paid);
   const income = Number(state.income[curKey])||0;
   updateExpRemain(income-total);
-  document.getElementById('incomeInput').value = state.income[curKey] || '';
+  document.getElementById('incomeInput').value = toDisplayAmount(state.income[curKey]);
 }
 
 function updateExpRemain(net){
@@ -813,7 +821,7 @@ document.getElementById('clearExpMonth').addEventListener('click', ()=>{
 });
 
 document.getElementById('incomeInput').addEventListener('input', (e)=>{
-  state.income[curKey] = Number(e.target.value)||0;
+  state.income[curKey] = parseAmount(e.target.value);
   scheduleSave();
   const income = state.income[curKey];
   const total = Number(document.getElementById('expTotalV').textContent.replace(/[^\d.-]/g,''))||0;
@@ -894,7 +902,7 @@ document.body.addEventListener('input', (e)=>{
   }
   if(field==='amount'){
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
-    if(rec){ rec.amount = Number(t.value)||0; }
+    if(rec){ rec.amount = parseAmount(t.value); }
     scheduleSave();
     // Update only the totals, never rebuild the list here — rebuilding would
     // destroy the input the person is actively typing in and close the keyboard.
@@ -911,6 +919,23 @@ document.body.addEventListener('change', (e)=>{
     if(rec){ rec.paid = t.checked; }
     scheduleSave();
     if(kind==='card') renderCards(); else renderExpenses();
+  }
+});
+
+// Amount fields show commas normally, but switch to plain digits while being
+// edited so the cursor never jumps around a comma mid-typing, then reformat
+// with commas again once the person taps away.
+document.body.addEventListener('focusin', (e)=>{
+  const t = e.target;
+  if(t.classList && t.classList.contains('amount-input')){
+    const raw = parseAmount(t.value);
+    t.value = raw ? String(raw) : '';
+  }
+});
+document.body.addEventListener('focusout', (e)=>{
+  const t = e.target;
+  if(t.classList && t.classList.contains('amount-input')){
+    t.value = toDisplayAmount(parseAmount(t.value));
   }
 });
 
