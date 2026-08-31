@@ -813,25 +813,47 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
   renderAll();
 });
 
-// ---- Download a tab's content as a PNG image ----
+// ---- Show a tab's content as a downloadable PNG image ----
+// iOS Safari doesn't reliably handle direct data-URI downloads (especially
+// for large images), so instead we open a new tab with the image — the
+// person can then long-press it and choose "Save Image" to add it to Photos.
 async function exportAsImage(captureElId, filenamePrefix){
   const el = document.getElementById(captureElId);
   if(!el || typeof html2canvas === 'undefined'){
     alert('ไม่สามารถสร้างรูปภาพได้ในขณะนี้ ลองใหม่อีกครั้ง');
     return;
   }
+  // Open the tab synchronously (still inside the click gesture) so Safari's
+  // popup blocker allows it — we fill it in once the image is ready below.
+  const previewWin = window.open('', '_blank');
   try{
     const canvas = await html2canvas(el, {
       backgroundColor: '#FAF6ED',
       scale: 2,
       useCORS: true
     });
-    const link = document.createElement('a');
-    link.download = `${filenamePrefix}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    canvas.toBlob((blob)=>{
+      if(!blob){
+        if(previewWin) previewWin.close();
+        alert('สร้างรูปภาพไม่สำเร็จ ลองใหม่อีกครั้ง');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      if(previewWin && !previewWin.closed){
+        previewWin.location.href = url;
+      }else{
+        // popup blocked -> fall back to a plain download link
+        const link = document.createElement('a');
+        link.download = `${filenamePrefix}.png`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }, 'image/png');
   }catch(e){
     console.error('export image failed', e);
+    if(previewWin) previewWin.close();
     alert('สร้างรูปภาพไม่สำเร็จ ลองใหม่อีกครั้ง');
   }
 }
