@@ -184,16 +184,12 @@
   <!-- CARDS TAB -->
   <section id="tab-cards">
     <div class="badge-hero" id="cardsBadge">
-      <div class="k">คงเหลือต้องจ่าย</div>
-      <div class="v" id="cardsRemainV">฿0</div>
-    </div>
-    <div class="stamp-row">
-      <div class="stamp"><div class="k">ยอดรวมเดือนนี้</div><div class="v" id="cardsTotalV">฿0</div></div>
-      <div class="stamp paid"><div class="k">จ่ายแล้ว</div><div class="v" id="cardsPaidV">฿0</div></div>
+      <div class="k">ยอดรวมเดือนนี้</div>
+      <div class="v" id="cardsTotalV">฿0</div>
     </div>
     <div class="list" id="cardsList"></div>
     <button class="add-row" id="addCard">+ เพิ่มบัตร/บิลใหม่</button>
-    <div class="footer-note"><button id="clearCardsMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
+    <div class="footer-note"><button id="clearCardsMonth">ล้างยอดของเดือนนี้</button></div>
   </section>
 
   <!-- EXPENSES TAB -->
@@ -381,13 +377,12 @@ function renderCards(){
   const list = document.getElementById('cardsList');
   list.innerHTML = '';
   const sorted = [...state.cards].sort((a,b)=>(a.pay||99)-(b.pay||99));
-  let total=0, paid=0;
+  let total=0;
   sorted.forEach(c=>{
     const rec = state.cardMonthly[curKey][c.id];
     total += Number(rec.amount)||0;
-    if(rec.paid) paid += Number(rec.amount)||0;
     const row = document.createElement('div');
-    row.className = 'row' + (rec.paid?' is-paid':'');
+    row.className = 'row';
     row.innerHTML = `
       <div class="row-top">
         <input class="row-name" data-id="${c.id}" data-f="name" value="${escapeHtml(c.name)}">
@@ -402,7 +397,6 @@ function renderCards(){
         <div class="amount-wrap"><span class="cur">฿</span>
           <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${rec.amount||''}" placeholder="0">
         </div>
-        <label class="paidbox"><input type="checkbox" data-id="${c.id}" data-f="paid" data-kind="card" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
       </div>
       <div class="row-mid" style="margin-top:6px;">
         <span class="pill" style="cursor:pointer;" data-id="${c.id}" data-f="cycle" data-edit="cycle">แก้ตัดรอบ</span>
@@ -412,8 +406,6 @@ function renderCards(){
     list.appendChild(row);
   });
   document.getElementById('cardsTotalV').textContent = fmt(total);
-  document.getElementById('cardsPaidV').textContent = fmt(paid);
-  document.getElementById('cardsRemainV').textContent = fmt(total-paid);
 }
 
 function renderExpenses(){
@@ -498,7 +490,7 @@ document.getElementById('addExp').addEventListener('click', ()=>{
 });
 
 document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
-  if(!confirm('ล้างยอดและสถานะจ่ายของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
+  if(!confirm('ล้างยอดของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
   state.cardMonthly[curKey] = {};
   state.cards.forEach(c=>{ state.cardMonthly[curKey][c.id]={amount:0,paid:false}; });
   scheduleSave();
