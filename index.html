@@ -160,6 +160,8 @@
   }
   .save-flash.show{opacity:.85;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -326,28 +328,29 @@ function freshDefault(){
   return st;
 }
 
-// Load saved data in the background, without blocking the UI.
-// If this never resolves (slow/unavailable storage), the page still
-// works fully on the in-memory default data from init().
-async function loadStateInBackground(){
-  try{
-    const res = await window.storage.get('budget-data', false);
-    if(res && res.value){
-      state = JSON.parse(res.value);
-      renderAll();
-      return;
-    }
-  }catch(e){ /* no saved data yet, or storage unavailable */ }
-  // nothing saved yet (or storage unavailable) -> try to persist the seeded defaults
-  try{ await persist(state); }catch(e){ /* ignore */ }
-}
+// --- Firebase Realtime Database sync ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAxZvMxNVDLYEXX4CKwVZL9xNdYWGryxi0",
+  authDomain: "budget-tracker-63402.firebaseapp.com",
+  databaseURL: "https://budget-tracker-63402-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "budget-tracker-63402",
+  storageBucket: "budget-tracker-63402.firebasestorage.app",
+  messagingSenderId: "826560950166",
+  appId: "1:826560950166:web:399d29637a17ac43a037b7"
+};
+let dataRef = null;
+let lastSavedJSON = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  dataRef = firebase.database().ref('budget-data');
+}catch(e){ console.error('firebase init failed', e); }
 
 let saveTimer=null;
-async function persist(st){
-  try{
-    await window.storage.set('budget-data', JSON.stringify(st), false);
-    flashSaved();
-  }catch(e){ console.error('save failed', e); }
+function persist(st){
+  if(!dataRef) return;
+  const json = JSON.stringify(st);
+  lastSavedJSON = json;
+  dataRef.set(st).then(flashSaved).catch(e=>console.error('save failed', e));
 }
 function scheduleSave(){
   clearTimeout(saveTimer);
@@ -358,6 +361,27 @@ function flashSaved(){
   el.classList.add('show');
   clearTimeout(el._t);
   el._t = setTimeout(()=>el.classList.remove('show'), 900);
+}
+
+// Listen for changes from ANY device in real time. Fires immediately on
+// load with whatever is currently stored, then again whenever any device
+// (including this one) writes new data.
+function attachRealtimeListener(){
+  if(!dataRef) return;
+  dataRef.on('value', (snapshot)=>{
+    const val = snapshot.val();
+    if(!val){
+      // nothing stored yet anywhere -> seed with the starting template
+      state = freshDefault();
+      persist(state);
+      renderAll();
+      return;
+    }
+    const incomingJSON = JSON.stringify(val);
+    if(incomingJSON === lastSavedJSON) return; // this is just the echo of our own write
+    state = val;
+    renderAll();
+  }, (err)=>{ console.error('firebase read failed', err); });
 }
 
 function ensureMonth(st, key){
@@ -583,7 +607,7 @@ document.body.addEventListener('change', (e)=>{
 try{
   state = freshDefault();
   renderAll();
-  loadStateInBackground();
+  attachRealtimeListener();
 }catch(e){
   console.error('init failed', e);
   document.body.insertAdjacentHTML('afterbegin',
