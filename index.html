@@ -761,12 +761,12 @@ document.querySelectorAll('.subtab').forEach(t=>{
 });
 
 document.getElementById('prevMonth').addEventListener('click', ()=>{
-  current.setMonth(current.getMonth()-1);
+  current = new Date(current.getFullYear(), current.getMonth()-1, 1);
   curKey = monthKey(current);
   renderAll();
 });
 document.getElementById('nextMonth').addEventListener('click', ()=>{
-  current.setMonth(current.getMonth()+1);
+  current = new Date(current.getFullYear(), current.getMonth()+1, 1);
   curKey = monthKey(current);
   renderAll();
 });
