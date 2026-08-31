@@ -97,9 +97,10 @@
   }
   .row.is-paid{background:var(--paid-soft);border-color:#c7dccc;}
   .row-top{display:flex;align-items:flex-start;gap:8px;}
+  .name-block{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
   .row-name{
-    flex:1;border:none;background:transparent;font-size:14.5px;font-weight:600;color:var(--ink);
-    padding:2px 0;font-family:inherit;
+    width:100%;border:none;background:transparent;font-size:14.5px;font-weight:600;color:var(--ink);
+    padding:2px 0 0;font-family:inherit;
   }
   .row-name:focus{outline:none;border-bottom:1px dashed var(--ink-faint);}
   .row-del{
@@ -113,7 +114,7 @@
   }
   .row-note{
     width:100%;border:none;background:transparent;font-size:11.5px;color:var(--ink-soft);
-    font-style:italic;padding:2px 0;font-family:inherit;
+    font-style:italic;padding:0 0 2px;font-family:inherit;
   }
   .row-note:focus{outline:none;}
   .row-note::placeholder{color:var(--ink-faint);}
@@ -159,6 +160,106 @@
     border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;
   }
   .save-flash.show{opacity:.85;}
+
+  .subtab{
+    flex:1;text-align:center;padding:9px 6px;border-radius:9px;font-size:13px;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;user-select:none;transition:background .15s,color .15s;
+  }
+  .subtab.active{background:var(--card-bg);color:var(--ink);box-shadow:var(--shadow);}
+
+  .sum-item{
+    background:var(--card-bg);border:1px solid var(--rule);border-radius:12px;
+    padding:12px;box-shadow:var(--shadow);
+  }
+  .sum-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .sum-item-top .label{font-family:Georgia,serif;font-weight:700;font-size:15px;}
+  .sum-net{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:14px;}
+  .sum-net.pos{color:var(--paid);}
+  .sum-net.neg{color:var(--stamp);}
+  .sum-bar-track{
+    width:100%;height:10px;background:var(--paper-deep);border-radius:6px;overflow:hidden;margin-bottom:8px;
+  }
+  .sum-bar-fill{height:100%;border-radius:6px;background:var(--stamp);transition:width .3s;}
+  .sum-item-bottom{
+    display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);
+  }
+  .sum-empty{
+    text-align:center;color:var(--ink-faint);font-size:13px;padding:30px 10px;
+  }
+
+  .day-header{
+    display:flex;align-items:center;gap:8px;margin:16px 2px 6px;
+  }
+  .day-header:first-child{margin-top:2px;}
+  .day-header .circle{
+    flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--stamp);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .day-header.today .circle{background:var(--paid);}
+  .day-header .txt{font-size:12.5px;color:var(--ink-soft);font-weight:700;}
+  .day-header.today .txt{color:var(--paid);}
+  .day-header .amt{
+    margin-left:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink-soft);
+  }
+
+  .card-row{display:flex;gap:10px;align-items:flex-start;}
+  .date-badge{
+    flex:0 0 auto;width:66px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  }
+  .date-badge .box{
+    width:60px;height:58px;border-radius:15px;background:var(--card-bg);
+    border:2.5px solid var(--stamp);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .date-badge .dnum{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:26px;line-height:1;color:var(--stamp);
+  }
+  .date-badge .dlabel{font-size:9px;color:var(--stamp);margin-top:2px;letter-spacing:.3px;font-weight:700;}
+  .date-badge.today .box{background:var(--stamp);border-color:var(--stamp);}
+  .date-badge.today .dnum, .date-badge.today .dlabel{color:#fff;}
+  .date-edit{display:flex;flex-direction:column;gap:3px;width:100%;}
+  .date-edit span{
+    font-size:9px;text-align:center;color:var(--ink-soft);background:var(--paper-deep);
+    border-radius:6px;padding:3px 2px;cursor:pointer;line-height:1.2;
+  }
+  .card-row .row-body{flex:1;min-width:0;}
+
+  .cal-wrap{
+    background:var(--card-bg);border:1px solid var(--rule);border-radius:14px;
+    padding:12px 10px;margin-bottom:16px;box-shadow:var(--shadow);
+  }
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
+  .cal-weekdays span{text-align:center;font-size:10.5px;color:var(--ink-faint);font-weight:700;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-cell{
+    aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border-radius:9px;position:relative;font-size:12.5px;color:var(--ink);
+  }
+  .cal-cell.empty{visibility:hidden;}
+  .cal-cell.has-bill{cursor:pointer;background:var(--paper-deep);}
+  .cal-cell .dnum{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;}
+  .cal-cell .dot{
+    width:5px;height:5px;border-radius:50%;background:var(--stamp);margin-top:2px;
+  }
+  .cal-cell.today{background:var(--ink);}
+  .cal-cell.today .dnum{color:var(--paper);}
+  .cal-cell.today .dot{background:var(--paper);}
+  .cal-legend{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:10.5px;color:var(--ink-soft);}
+  .cal-legend .dot{width:5px;height:5px;border-radius:50%;background:var(--stamp);}
+
+  .hero-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card-bg);border:1.5px solid var(--stamp);border-radius:14px;
+    padding:13px 16px;margin-bottom:16px;box-shadow:var(--shadow);
+  }
+  .hero-bar .k{font-size:12.5px;color:var(--ink-soft);font-weight:700;}
+  .hero-bar .v{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:19px;font-weight:800;color:var(--stamp);
+  }
+  .hero-bar.pos{border-color:var(--paid);}
+  .hero-bar.pos .v{color:var(--paid);}
+  .hero-bar.neg{border-color:var(--stamp);}
+  .hero-bar.neg .v{color:var(--stamp);}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -167,52 +268,69 @@
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>สมุดบัญชีค่าใช้จ่าย</h1>
-      <div class="sub">บันทึกวันจ่ายบัตร/บิล และค่าใช้จ่ายรายเดือน</div>
+      <h1>📒 สมุดบัญชีค่าใช้จ่าย</h1>
+      <div class="sub">บัตร/บิล · ค่าใช้จ่ายรายเดือน · สรุปภาพรวม</div>
     </div>
   </header>
 
   <div class="tabs">
-    <div class="tab active" data-tab="cards">บัตร / บิล</div>
-    <div class="tab" data-tab="expenses">ค่าใช้จ่ายรายเดือน</div>
+    <div class="tab active" data-tab="cards">💳 บัตร/บิล</div>
+    <div class="tab" data-tab="expenses">🧾 ค่าใช้จ่าย</div>
+    <div class="tab" data-tab="summary">📊 สรุป</div>
   </div>
 
-  <div class="month-bar">
+  <div class="month-bar" id="monthBar">
     <button id="prevMonth">‹</button>
-    <div class="label" id="monthLabel">-</div>
+    <div class="label" id="monthLabel">📅 -</div>
     <button id="nextMonth">›</button>
   </div>
 
   <!-- CARDS TAB -->
   <section id="tab-cards">
-    <div class="badge-hero" id="cardsBadge">
-      <div class="k">ยอดรวมเดือนนี้</div>
+    <div class="cal-wrap" id="calWrap">
+      <div class="cal-weekdays">
+        <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend"><span class="dot"></span> วันที่มีบิลต้องจ่าย (แตะเพื่อดูรายการ)</div>
+    </div>
+    <div class="hero-bar" id="cardsBadge">
+      <div class="k">💳 ยอดรวมเดือนนี้</div>
       <div class="v" id="cardsTotalV">฿0</div>
     </div>
     <div class="list" id="cardsList"></div>
-    <button class="add-row" id="addCard">+ เพิ่มบัตร/บิลใหม่</button>
+    <button class="add-row" id="addCard">➕ เพิ่มบัตร/บิลใหม่</button>
     <div class="footer-note"><button id="clearCardsMonth">ล้างยอดของเดือนนี้</button></div>
   </section>
 
   <!-- EXPENSES TAB -->
   <section id="tab-expenses" style="display:none;">
     <div class="income-box">
-      <div class="k">รายรับเดือนนี้</div>
+      <div class="k">💰 รายรับเดือนนี้</div>
       <div class="amount-wrap"><span class="cur">฿</span>
         <input class="amount-input" id="incomeInput" inputmode="decimal" placeholder="0">
       </div>
     </div>
-    <div class="badge-hero" id="expBadge">
-      <div class="k">เงินคงเหลือ</div>
+    <div class="hero-bar" id="expBadge">
+      <div class="k">💵 เงินคงเหลือ</div>
       <div class="v" id="expRemainV">฿0</div>
     </div>
     <div class="stamp-row">
-      <div class="stamp"><div class="k">ค่าใช้จ่ายรวม</div><div class="v" id="expTotalV">฿0</div></div>
-      <div class="stamp paid"><div class="k">จ่ายไปแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
+      <div class="stamp"><div class="k">🧾 ค่าใช้จ่ายรวม</div><div class="v" id="expTotalV">฿0</div></div>
+      <div class="stamp paid"><div class="k">✅ จ่ายไปแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
     </div>
     <div class="list" id="expList"></div>
-    <button class="add-row" id="addExp">+ เพิ่มรายการค่าใช้จ่าย</button>
+    <button class="add-row" id="addExp">➕ เพิ่มรายการค่าใช้จ่าย</button>
     <div class="footer-note"><button id="clearExpMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
+  </section>
+
+  <!-- SUMMARY TAB -->
+  <section id="tab-summary" style="display:none;">
+    <div class="tabs" style="margin-bottom:14px;">
+      <div class="subtab active" data-sum="month">🗓️ รายเดือน</div>
+      <div class="subtab" data-sum="year">📆 รายปี</div>
+    </div>
+    <div class="list" id="summaryList"></div>
   </section>
 
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
@@ -393,38 +511,59 @@ function ensureMonth(st, key){
 }
 
 function renderMonthLabel(){
-  document.getElementById('monthLabel').textContent = monthLabelFromKey(curKey);
+  document.getElementById('monthLabel').textContent = '📅 ' + monthLabelFromKey(curKey);
 }
 
 function renderCards(){
   ensureMonth(state, curKey);
   const list = document.getElementById('cardsList');
   list.innerHTML = '';
-  const sorted = [...state.cards].sort((a,b)=>(a.pay||99)-(b.pay||99));
+  const sorted = [...state.cards].sort((a,b)=>{
+    const pa = a.pay==null ? 999 : a.pay;
+    const pb = b.pay==null ? 999 : b.pay;
+    return pa-pb;
+  });
+  const todayNum = new Date().getDate();
   let total=0;
+  let lastPay = undefined;
+
   sorted.forEach(c=>{
     const rec = state.cardMonthly[curKey][c.id];
     total += Number(rec.amount)||0;
+    const isFirstOfDay = c.pay !== lastPay;
+    lastPay = c.pay;
+    const isToday = c.pay===todayNum;
+
     const row = document.createElement('div');
-    row.className = 'row';
+    row.className = 'row card-row';
+    if(isFirstOfDay) row.id = c.pay==null ? 'day-none' : 'day-'+c.pay;
     row.innerHTML = `
-      <div class="row-top">
-        <input class="row-name" data-id="${c.id}" data-f="name" value="${escapeHtml(c.name)}">
-        <button class="row-del" data-id="${c.id}" data-type="card">✕</button>
-      </div>
-      <div class="row-mid">
-        <span class="pill">ตัดรอบ: ${c.cycle ?? '-'}</span>
-        <span class="pill">จ่ายวันที่: ${c.pay ?? '-'}</span>
-      </div>
-      <input class="row-note" data-id="${c.id}" data-f="note" placeholder="หมายเหตุ" value="${escapeHtml(c.note||'')}">
-      <div class="row-bottom">
-        <div class="amount-wrap"><span class="cur">฿</span>
-          <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${rec.amount||''}" placeholder="0">
+      <div class="date-badge${isToday?' today':''}">
+        <div class="box">
+          <div class="dnum">${c.pay ?? '?'}</div>
+          <div class="dlabel">จ่าย</div>
+        </div>
+        <div class="date-edit">
+          <span data-id="${c.id}" data-f="cycle" data-edit="cycle">แก้รอบ</span>
+          <span data-id="${c.id}" data-f="pay" data-edit="pay">แก้วัน</span>
         </div>
       </div>
-      <div class="row-mid" style="margin-top:6px;">
-        <span class="pill" style="cursor:pointer;" data-id="${c.id}" data-f="cycle" data-edit="cycle">แก้ตัดรอบ</span>
-        <span class="pill" style="cursor:pointer;" data-id="${c.id}" data-f="pay" data-edit="pay">แก้วันจ่าย</span>
+      <div class="row-body">
+        <div class="row-top">
+          <div class="name-block">
+            <input class="row-name" data-id="${c.id}" data-f="name" value="${escapeHtml(c.name)}">
+            <input class="row-note" data-id="${c.id}" data-f="note" placeholder="หมายเหตุ" value="${escapeHtml(c.note||'')}">
+          </div>
+          <button class="row-del" data-id="${c.id}" data-type="card">✕</button>
+        </div>
+        <div class="row-mid">
+          <span class="pill">ตัดรอบ: ${c.cycle ?? '-'}</span>
+        </div>
+        <div class="row-bottom">
+          <div class="amount-wrap"><span class="cur">฿</span>
+            <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${rec.amount||''}" placeholder="0">
+          </div>
+        </div>
       </div>
     `;
     list.appendChild(row);
@@ -460,18 +599,142 @@ function renderExpenses(){
   document.getElementById('expTotalV').textContent = fmt(total);
   document.getElementById('expPaidV').textContent = fmt(paid);
   const income = Number(state.income[curKey])||0;
-  document.getElementById('expRemainV').textContent = fmt(income-total);
+  updateExpRemain(income-total);
   document.getElementById('incomeInput').value = state.income[curKey] || '';
+}
+
+function updateExpRemain(net){
+  const badge = document.getElementById('expBadge');
+  const v = document.getElementById('expRemainV');
+  v.textContent = fmt(net);
+  badge.classList.remove('pos','neg');
+  badge.classList.add(net>=0 ? 'pos' : 'neg');
 }
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+let sumView = 'month';
+
+function monthTotals(key){
+  const cardM = state.cardMonthly[key] || {};
+  const expM = state.expenseMonthly[key] || {};
+  let cardTotal=0, expTotal=0;
+  Object.values(cardM).forEach(r=>{ cardTotal += Number(r.amount)||0; });
+  Object.values(expM).forEach(r=>{ expTotal += Number(r.amount)||0; });
+  const income = Number(state.income[key])||0;
+  return { cardTotal, expTotal, outTotal: cardTotal+expTotal, income };
+}
+
+function renderSummary(){
+  const list = document.getElementById('summaryList');
+  list.innerHTML = '';
+
+  // collect every month key that has any data at all
+  const keys = new Set([
+    ...Object.keys(state.cardMonthly||{}),
+    ...Object.keys(state.expenseMonthly||{}),
+    ...Object.keys(state.income||{})
+  ]);
+  const sortedKeys = [...keys].sort();
+
+  if(sortedKeys.length===0){
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลให้สรุป 🌱</div>';
+    return;
+  }
+
+  let entries;
+  if(sumView==='month'){
+    entries = sortedKeys.map(k=>({ label: monthLabelFromKey(k), ...monthTotals(k) }));
+  }else{
+    const byYear = {};
+    sortedKeys.forEach(k=>{
+      const y = k.split('-')[0];
+      const t = monthTotals(k);
+      if(!byYear[y]) byYear[y] = { cardTotal:0, expTotal:0, outTotal:0, income:0 };
+      byYear[y].cardTotal += t.cardTotal;
+      byYear[y].expTotal += t.expTotal;
+      byYear[y].outTotal += t.outTotal;
+      byYear[y].income += t.income;
+    });
+    entries = Object.keys(byYear).sort().map(y=>({
+      label: (Number(y)+543)+'',
+      ...byYear[y]
+    }));
+  }
+
+  const maxOut = Math.max(1, ...entries.map(e=>e.outTotal), ...entries.map(e=>e.income));
+
+  entries.forEach(e=>{
+    const net = e.income - e.outTotal;
+    const pct = Math.min(100, Math.round((e.outTotal/maxOut)*100));
+    const row = document.createElement('div');
+    row.className = 'sum-item';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <div class="sum-item-top">
+        <span class="label">${escapeHtml(e.label)}</span>
+        <span class="sum-net ${net>=0?'pos':'neg'}">${net>=0?'+':''}${fmt(net)}</span>
+      </div>
+      <div class="sum-bar-track"><div class="sum-bar-fill" style="width:${pct}%"></div></div>
+      <div class="sum-item-bottom">
+        <span>💸 ใช้จ่าย ${fmt(e.outTotal)}</span>
+        <span>💰 รายรับ ${fmt(e.income)}</span>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function renderCalendar(){
+  ensureMonth(state, curKey);
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const [y, m] = curKey.split('-').map(Number);
+  const firstWeekday = new Date(y, m-1, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(y, m, 0).getDate();
+
+  const now = new Date();
+  const isCurrentRealMonth = (now.getFullYear()===y && now.getMonth()===m-1);
+  const todayNum = now.getDate();
+
+  // map day-of-month -> total amount due, from the recurring card schedule
+  const dayTotals = {};
+  state.cards.forEach(c=>{
+    if(c.pay==null) return;
+    const rec = state.cardMonthly[curKey][c.id];
+    dayTotals[c.pay] = (dayTotals[c.pay]||0) + (Number(rec.amount)||0);
+  });
+
+  for(let i=0;i<firstWeekday;i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-cell empty';
+    grid.appendChild(empty);
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const hasBill = dayTotals[d] !== undefined;
+    const isToday = isCurrentRealMonth && d===todayNum;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (hasBill?' has-bill':'') + (isToday?' today':'');
+    cell.innerHTML = `<div class="dnum">${d}</div>` + (hasBill?'<div class="dot"></div>':'');
+    if(hasBill){
+      cell.addEventListener('click', ()=>{
+        const target = document.getElementById('day-'+d);
+        if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    }
+    grid.appendChild(cell);
+  }
+}
+
 function renderAll(){
   renderMonthLabel();
+  renderCalendar();
   renderCards();
   renderExpenses();
+  renderSummary();
 }
 
 // ---- events ----
@@ -482,6 +745,18 @@ document.querySelectorAll('.tab').forEach(t=>{
     activeTab = t.dataset.tab;
     document.getElementById('tab-cards').style.display = activeTab==='cards' ? '' : 'none';
     document.getElementById('tab-expenses').style.display = activeTab==='expenses' ? '' : 'none';
+    document.getElementById('tab-summary').style.display = activeTab==='summary' ? '' : 'none';
+    document.getElementById('monthBar').style.display = activeTab==='summary' ? 'none' : '';
+    if(activeTab==='summary') renderSummary();
+  });
+});
+
+document.querySelectorAll('.subtab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.subtab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    sumView = t.dataset.sum;
+    renderSummary();
   });
 });
 
@@ -533,7 +808,7 @@ document.getElementById('incomeInput').addEventListener('input', (e)=>{
   scheduleSave();
   const income = state.income[curKey];
   const total = Number(document.getElementById('expTotalV').textContent.replace(/[^\d.-]/g,''))||0;
-  document.getElementById('expRemainV').textContent = fmt(income-total);
+  updateExpRemain(income-total);
 });
 
 document.body.addEventListener('click', (e)=>{
