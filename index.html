@@ -457,7 +457,12 @@ const firebaseConfig = {
   appId: "1:826560950166:web:399d29637a17ac43a037b7"
 };
 let dataRef = null;
-let lastSavedJSON = null;
+// Unique per browser tab/session. Used to recognize "this is just the echo of
+// my own write" without comparing full JSON — comparing full JSON breaks
+// because Firebase can reorder object keys on round-trip, which caused
+// every save to look like a "remote change" and trigger a destructive
+// full re-render mid-typing (closing the keyboard after one keystroke).
+const clientId = 'c' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 try{
   firebase.initializeApp(firebaseConfig);
   dataRef = firebase.database().ref('budget-data');
@@ -466,9 +471,8 @@ try{
 let saveTimer=null;
 function persist(st){
   if(!dataRef) return;
-  const json = JSON.stringify(st);
-  lastSavedJSON = json;
-  dataRef.set(st).then(flashSaved).catch(e=>console.error('save failed', e));
+  const payload = Object.assign({}, st, { __writer: clientId, __ts: Date.now() });
+  dataRef.set(payload).then(flashSaved).catch(e=>console.error('save failed', e));
 }
 function scheduleSave(){
   clearTimeout(saveTimer);
@@ -495,8 +499,13 @@ function attachRealtimeListener(){
       renderAll();
       return;
     }
-    const incomingJSON = JSON.stringify(val);
-    if(incomingJSON === lastSavedJSON) return; // this is just the echo of our own write
+    if(val.__writer === clientId){
+      // this is just the echo of a write this same tab just made — keep the
+      // synced copy but skip re-rendering, since re-rendering here would
+      // destroy whatever input the person is actively typing into
+      state = val;
+      return;
+    }
     state = val;
     renderAll();
   }, (err)=>{ console.error('firebase read failed', err); });
