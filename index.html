@@ -521,6 +521,28 @@ function flashSaved(){
 // Listen for changes from ANY device in real time. Fires immediately on
 // load with whatever is currently stored, then again whenever any device
 // (including this one) writes new data.
+// Deleting a card/expense item removes it from the master list, but if that
+// deletion never reaches Firebase before another write, or the data was
+// edited by hand elsewhere, a per-month record for that id can be left
+// behind — invisible in the list (nothing to render it against) but still
+// counted in totals. This strips any such orphaned records.
+function sanitizeState(st){
+  const cardIds = new Set((st.cards||[]).map(c=>c.id));
+  const expIds = new Set((st.expenseItems||[]).map(i=>i.id));
+  let removed = false;
+  Object.keys(st.cardMonthly||{}).forEach(k=>{
+    Object.keys(st.cardMonthly[k]).forEach(id=>{
+      if(!cardIds.has(id)){ delete st.cardMonthly[k][id]; removed = true; }
+    });
+  });
+  Object.keys(st.expenseMonthly||{}).forEach(k=>{
+    Object.keys(st.expenseMonthly[k]).forEach(id=>{
+      if(!expIds.has(id)){ delete st.expenseMonthly[k][id]; removed = true; }
+    });
+  });
+  return removed;
+}
+
 function attachRealtimeListener(){
   if(!dataRef) return;
   dataRef.on('value', (snapshot)=>{
@@ -537,10 +559,13 @@ function attachRealtimeListener(){
       // synced copy but skip re-rendering, since re-rendering here would
       // destroy whatever input the person is actively typing into
       state = val;
+      sanitizeState(state);
       return;
     }
     state = val;
+    const hadOrphans = sanitizeState(state);
     renderAll();
+    if(hadOrphans) scheduleSave(); // persist the cleaned-up version so the ghost doesn't come back
   }, (err)=>{ console.error('firebase read failed', err); });
 }
 
