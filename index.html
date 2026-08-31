@@ -263,6 +263,7 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -287,39 +288,45 @@
 
   <!-- CARDS TAB -->
   <section id="tab-cards">
-    <div class="cal-wrap" id="calWrap">
-      <div class="cal-weekdays">
-        <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+    <div id="cardsCapture">
+      <div class="cal-wrap" id="calWrap">
+        <div class="cal-weekdays">
+          <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend"><span class="dot"></span> วันที่มีบิลต้องจ่าย (แตะเพื่อดูรายการ)</div>
       </div>
-      <div class="cal-grid" id="calGrid"></div>
-      <div class="cal-legend"><span class="dot"></span> วันที่มีบิลต้องจ่าย (แตะเพื่อดูรายการ)</div>
+      <div class="hero-bar" id="cardsBadge">
+        <div class="k">💳 ยอดรวมเดือนนี้</div>
+        <div class="v" id="cardsTotalV">฿0</div>
+      </div>
+      <div class="list" id="cardsList"></div>
     </div>
-    <div class="hero-bar" id="cardsBadge">
-      <div class="k">💳 ยอดรวมเดือนนี้</div>
-      <div class="v" id="cardsTotalV">฿0</div>
-    </div>
-    <div class="list" id="cardsList"></div>
+    <button class="add-row" id="exportCards">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addCard">➕ เพิ่มบัตร/บิลใหม่</button>
     <div class="footer-note"><button id="clearCardsMonth">ล้างยอดของเดือนนี้</button></div>
   </section>
 
   <!-- EXPENSES TAB -->
   <section id="tab-expenses" style="display:none;">
-    <div class="income-box">
-      <div class="k">💰 รายรับเดือนนี้</div>
-      <div class="amount-wrap"><span class="cur">฿</span>
-        <input class="amount-input" id="incomeInput" inputmode="decimal" placeholder="0">
+    <div id="expensesCapture">
+      <div class="income-box">
+        <div class="k">💰 รายรับเดือนนี้</div>
+        <div class="amount-wrap"><span class="cur">฿</span>
+          <input class="amount-input" id="incomeInput" inputmode="decimal" placeholder="0">
+        </div>
       </div>
+      <div class="hero-bar" id="expBadge">
+        <div class="k">💵 เงินคงเหลือ</div>
+        <div class="v" id="expRemainV">฿0</div>
+      </div>
+      <div class="stamp-row">
+        <div class="stamp"><div class="k">🧾 ค่าใช้จ่ายรวม</div><div class="v" id="expTotalV">฿0</div></div>
+        <div class="stamp paid"><div class="k">✅ จ่ายไปแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
+      </div>
+      <div class="list" id="expList"></div>
     </div>
-    <div class="hero-bar" id="expBadge">
-      <div class="k">💵 เงินคงเหลือ</div>
-      <div class="v" id="expRemainV">฿0</div>
-    </div>
-    <div class="stamp-row">
-      <div class="stamp"><div class="k">🧾 ค่าใช้จ่ายรวม</div><div class="v" id="expTotalV">฿0</div></div>
-      <div class="stamp paid"><div class="k">✅ จ่ายไปแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
-    </div>
-    <div class="list" id="expList"></div>
+    <button class="add-row" id="exportExpenses">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addExp">➕ เพิ่มรายการค่าใช้จ่าย</button>
     <div class="footer-note"><button id="clearExpMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
   </section>
@@ -330,7 +337,10 @@
       <div class="subtab active" data-sum="month">🗓️ รายเดือน</div>
       <div class="subtab" data-sum="year">📆 รายปี</div>
     </div>
-    <div class="list" id="summaryList"></div>
+    <div id="summaryCapture">
+      <div class="list" id="summaryList"></div>
+    </div>
+    <button class="add-row" id="exportSummary" style="margin-top:14px;">📷 ดาวน์โหลดเป็นรูปภาพ</button>
   </section>
 
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
@@ -476,8 +486,23 @@ try{
   dataRef = firebase.database().ref('budget-data');
 }catch(e){ console.error('firebase init failed', e); }
 
+// --- Google Sheets mirror sync (optional) ---
+// ใส่ Web App URL หลัง deploy Google Apps Script (ดูไฟล์ BudgetSheetSync.gs) ที่นี่
+// ถ้าปล่อยว่างไว้ ระบบจะข้ามการ sync ขึ้นชีตไปเฉยๆ ไม่กระทบการทำงานส่วนอื่น
+const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzVeDjtvMJ30XAN23NDLc4l0ZuJbkcXxfD5g0xQ6cuZTawY0-Uga5jMz1D1aNiBqvy6/exec";
+function pushToSheet(st){
+  if(!SHEET_WEBHOOK_URL) return;
+  fetch(SHEET_WEBHOOK_URL, {
+    method: 'POST',
+    mode: 'no-cors', // Apps Script Web Apps don't need/return readable CORS responses
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(st)
+  }).catch(e=>console.error('sheet sync failed', e));
+}
+
 let saveTimer=null;
 function persist(st){
+  pushToSheet(st);
   if(!dataRef) return;
   const payload = Object.assign({}, st, { __writer: clientId, __ts: Date.now() });
   dataRef.set(payload).then(flashSaved).catch(e=>console.error('save failed', e));
@@ -786,6 +811,39 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
   current = new Date(current.getFullYear(), current.getMonth()+1, 1);
   curKey = monthKey(current);
   renderAll();
+});
+
+// ---- Download a tab's content as a PNG image ----
+async function exportAsImage(captureElId, filenamePrefix){
+  const el = document.getElementById(captureElId);
+  if(!el || typeof html2canvas === 'undefined'){
+    alert('ไม่สามารถสร้างรูปภาพได้ในขณะนี้ ลองใหม่อีกครั้ง');
+    return;
+  }
+  try{
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#FAF6ED',
+      scale: 2,
+      useCORS: true
+    });
+    const link = document.createElement('a');
+    link.download = `${filenamePrefix}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }catch(e){
+    console.error('export image failed', e);
+    alert('สร้างรูปภาพไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }
+}
+document.getElementById('exportCards').addEventListener('click', ()=>{
+  exportAsImage('cardsCapture', 'บัตรบิล-' + curKey);
+});
+document.getElementById('exportExpenses').addEventListener('click', ()=>{
+  exportAsImage('expensesCapture', 'คาใชจาย-' + curKey);
+});
+document.getElementById('exportSummary').addEventListener('click', ()=>{
+  const stamp = new Date().toISOString().slice(0,10);
+  exportAsImage('summaryCapture', 'สรุป-' + sumView + '-' + stamp);
 });
 
 document.getElementById('addCard').addEventListener('click', ()=>{
