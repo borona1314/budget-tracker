@@ -842,6 +842,30 @@ document.body.addEventListener('click', (e)=>{
   }
 });
 
+function recalcCardsTotal(){
+  ensureMonth(state, curKey);
+  let total=0;
+  state.cards.forEach(c=>{
+    const rec = state.cardMonthly[curKey][c.id];
+    total += Number(rec.amount)||0;
+  });
+  document.getElementById('cardsTotalV').textContent = fmt(total);
+}
+
+function recalcExpTotals(){
+  ensureMonth(state, curKey);
+  let total=0, paid=0;
+  state.expenseItems.forEach(it=>{
+    const rec = state.expenseMonthly[curKey][it.id];
+    total += Number(rec.amount)||0;
+    if(rec.paid) paid += Number(rec.amount)||0;
+  });
+  document.getElementById('expTotalV').textContent = fmt(total);
+  document.getElementById('expPaidV').textContent = fmt(paid);
+  const income = Number(state.income[curKey])||0;
+  updateExpRemain(income-total);
+}
+
 document.body.addEventListener('input', (e)=>{
   const t = e.target;
   const id = t.dataset.id, field = t.dataset.f, kind = t.dataset.kind;
@@ -863,7 +887,9 @@ document.body.addEventListener('input', (e)=>{
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){ rec.amount = Number(t.value)||0; }
     scheduleSave();
-    if(kind==='card') renderCards(); else renderExpenses();
+    // Update only the totals, never rebuild the list here — rebuilding would
+    // destroy the input the person is actively typing in and close the keyboard.
+    if(kind==='card') recalcCardsTotal(); else recalcExpTotals();
     return;
   }
 });
