@@ -352,6 +352,28 @@ const THAI_MONTHS = ["มกราคม","กุมภาพันธ์","ม�
   "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 
 function monthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function monthKeyAddMonths(key, delta){
+  const [y,m] = key.split('-').map(Number);
+  const d = new Date(y, (m-1)+delta, 1);
+  return monthKey(d);
+}
+function prevMonthKeyOf(key){ return monthKeyAddMonths(key, -1); }
+function monthsBetween(fromKey, toKey){
+  const [y1,m1] = fromKey.split('-').map(Number);
+  const [y2,m2] = toKey.split('-').map(Number);
+  return (y2-y1)*12 + (m2-m1);
+}
+function currentInstallmentNumber(item, key){
+  if(!item || !item.installment) return null;
+  return monthsBetween(item.installment.startKey, key) + 1;
+}
+function installmentLabel(item, key){
+  const n = currentInstallmentNumber(item, key);
+  if(n===null) return null;
+  if(n > item.installment.total) return 'ผ่อนครบแล้ว ✅';
+  if(n < 1) return `ผ่อน (ยังไม่เริ่ม)`;
+  return `ผ่อน ${n}/${item.installment.total}`;
+}
 function monthLabelFromKey(key){
   const [y,m] = key.split('-').map(Number);
   return `${THAI_MONTHS[m-1]} ${y+543}`;
@@ -573,8 +595,21 @@ function ensureMonth(st, key){
   if(!st.cardMonthly[key]) st.cardMonthly[key] = {};
   if(!st.expenseMonthly[key]) st.expenseMonthly[key] = {};
   if(st.income[key]===undefined) st.income[key] = 0;
-  st.cards.forEach(c=>{ if(!st.cardMonthly[key][c.id]) st.cardMonthly[key][c.id] = {amount:0,paid:false}; });
-  st.expenseItems.forEach(it=>{ if(!st.expenseMonthly[key][it.id]) st.expenseMonthly[key][it.id] = {amount:0,paid:false}; });
+  const prevKey = prevMonthKeyOf(key);
+  const prevCard = st.cardMonthly[prevKey] || {};
+  const prevExp = st.expenseMonthly[prevKey] || {};
+  st.cards.forEach(c=>{
+    if(!st.cardMonthly[key][c.id]){
+      const carry = prevCard[c.id];
+      st.cardMonthly[key][c.id] = { amount: carry ? carry.amount : 0, paid:false };
+    }
+  });
+  st.expenseItems.forEach(it=>{
+    if(!st.expenseMonthly[key][it.id]){
+      const carry = prevExp[it.id];
+      st.expenseMonthly[key][it.id] = { amount: carry ? carry.amount : 0, paid:false };
+    }
+  });
 }
 
 function renderMonthLabel(){
@@ -625,6 +660,7 @@ function renderCards(){
         </div>
         <div class="row-mid">
           <span class="pill">ตัดรอบ: ${c.cycle ?? '-'}</span>
+          <span class="pill installment-pill" style="cursor:pointer;" data-id="${c.id}" data-edit="installment" data-kind="card">${installmentLabel(c, curKey) || '+ ตั้งผ่อน'}</span>
         </div>
         <div class="row-bottom">
           <div class="amount-wrap"><span class="cur">฿</span>
@@ -653,6 +689,9 @@ function renderExpenses(){
       <div class="row-top">
         <input class="row-name" data-id="${it.id}" data-f="name" data-kind="expitem" value="${escapeHtml(it.name)}">
         <button class="row-del" data-id="${it.id}" data-type="exp">✕</button>
+      </div>
+      <div class="row-mid">
+        <span class="pill installment-pill" style="cursor:pointer;" data-id="${it.id}" data-edit="installment" data-kind="exp">${installmentLabel(it, curKey) || '+ ตั้งผ่อน'}</span>
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
@@ -953,6 +992,30 @@ document.body.addEventListener('click', (e)=>{
   const editPill = e.target.closest('[data-edit]');
   if(editPill){
     const id = editPill.dataset.id, field = editPill.dataset.edit;
+
+    if(field==='installment'){
+      const kind = editPill.dataset.kind; // 'card' or 'exp'
+      const list = kind==='card' ? state.cards : state.expenseItems;
+      const item = list.find(x=>x.id===id);
+      if(!item) return;
+      const totalStr = prompt('จำนวนงวดทั้งหมด (เดือน) เช่น 36 — เว้นว่างเพื่อยกเลิกผ่อน:', item.installment ? String(item.installment.total) : '');
+      if(totalStr===null) return; // cancelled
+      if(totalStr.trim()===''){
+        item.installment = null;
+      }else{
+        const total = Number(totalStr);
+        if(!total || total<1 || Number.isNaN(total)){ alert('กรุณาใส่ตัวเลขจำนวนงวดที่ถูกต้อง'); return; }
+        const defaultCur = item.installment ? String(currentInstallmentNumber(item, curKey)) : '1';
+        const curNumStr = prompt('งวดปัจจุบัน (ของเดือนที่กำลังดูอยู่) เช่น 2:', defaultCur);
+        if(curNumStr===null) return;
+        const curNum = Number(curNumStr)||1;
+        item.installment = { total, startKey: monthKeyAddMonths(curKey, -(curNum-1)) };
+      }
+      scheduleSave();
+      if(kind==='card') renderCards(); else renderExpenses();
+      return;
+    }
+
     const card = state.cards.find(c=>c.id===id);
     const cur = card[field];
     const val = prompt(field==='cycle' ? 'วันตัดรอบ (1-31 หรือเว้นว่าง):' : 'วันจ่าย (1-31):', cur ?? '');
