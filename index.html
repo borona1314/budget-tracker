@@ -379,18 +379,23 @@ function noteLabel(it){
   return '📝 ' + (it.note.length>14 ? it.note.slice(0,14)+'…' : it.note);
 }
 // When an amount is edited in month `fromKey`, carry that same value forward
-// into every month that's already been visited/created AND hasn't actually
-// happened yet in real life (strictly after both fromKey and today). This
-// keeps future placeholder months in sync until the person clears one
-// specifically via "ล้างยอดของเดือนนี้".
+// into every month that hasn't actually happened yet in real life — this
+// creates those future months' records proactively (not just updating ones
+// already visited), so jumping straight to a future month without visiting
+// every month in between still shows the right value. Keeps future
+// placeholder months in sync until the person clears one specifically via
+// "ล้างยอดของเดือนนี้". Bounded to 24 months ahead.
+const FORWARD_PROPAGATE_MONTHS = 24;
 function propagateForwardAmount(kind, id, fromKey, amount){
   const todayKey = monthKey(new Date());
   const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
-  Object.keys(store).forEach(key=>{
-    if(key > fromKey && key > todayKey && store[key][id]){
-      store[key][id].amount = amount;
-    }
-  });
+  const base = fromKey > todayKey ? fromKey : todayKey; // don't touch already-past months
+  for(let i=1; i<=FORWARD_PROPAGATE_MONTHS; i++){
+    const key = monthKeyAddMonths(base, i);
+    if(!store[key]) store[key] = {};
+    const existingPaid = store[key][id] ? store[key][id].paid : false;
+    store[key][id] = { amount, paid: existingPaid };
+  }
 }
 function monthLabelFromKey(key){
   const [y,m] = key.split('-').map(Number);
