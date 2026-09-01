@@ -374,6 +374,24 @@ function installmentLabel(item, key){
   if(n < 1) return `ผ่อน (ยังไม่เริ่ม)`;
   return `ผ่อน ${n}/${item.installment.total}`;
 }
+function noteLabel(it){
+  if(!it.note) return '+ หมายเหตุ';
+  return '📝 ' + (it.note.length>14 ? it.note.slice(0,14)+'…' : it.note);
+}
+// When an amount is edited in month `fromKey`, carry that same value forward
+// into every month that's already been visited/created AND hasn't actually
+// happened yet in real life (strictly after both fromKey and today). This
+// keeps future placeholder months in sync until the person clears one
+// specifically via "ล้างยอดของเดือนนี้".
+function propagateForwardAmount(kind, id, fromKey, amount){
+  const todayKey = monthKey(new Date());
+  const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
+  Object.keys(store).forEach(key=>{
+    if(key > fromKey && key > todayKey && store[key][id]){
+      store[key][id].amount = amount;
+    }
+  });
+}
 function monthLabelFromKey(key){
   const [y,m] = key.split('-').map(Number);
   return `${THAI_MONTHS[m-1]} ${y+543}`;
@@ -692,6 +710,7 @@ function renderExpenses(){
       </div>
       <div class="row-mid">
         <span class="pill installment-pill" style="cursor:pointer;" data-id="${it.id}" data-edit="installment" data-kind="exp">${installmentLabel(it, curKey) || '+ ตั้งผ่อน'}</span>
+        <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="note" data-kind="exp">${noteLabel(it)}</span>
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
@@ -737,13 +756,17 @@ function renderSummary(){
   const list = document.getElementById('summaryList');
   list.innerHTML = '';
 
-  // collect every month key that has any data at all
+  const todayKey = monthKey(new Date());
+
+  // collect every month key that has any data at all, but only ones that
+  // have actually happened in real life — future months get auto-filled
+  // placeholder amounts now, so they shouldn't count toward the summary yet
   const keys = new Set([
     ...Object.keys(state.cardMonthly||{}),
     ...Object.keys(state.expenseMonthly||{}),
     ...Object.keys(state.income||{})
   ]);
-  const sortedKeys = [...keys].sort();
+  const sortedKeys = [...keys].filter(k => k <= todayKey).sort();
 
   if(sortedKeys.length===0){
     list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลให้สรุป 🌱</div>';
@@ -939,6 +962,8 @@ document.getElementById('addCard').addEventListener('click', ()=>{
   state.cardMonthly[curKey][c.id] = {amount:0, paid:false};
   scheduleSave();
   renderCards();
+  const input = document.querySelector(`.row-name[data-id="${c.id}"]`);
+  if(input){ input.focus(); input.select(); }
 });
 document.getElementById('addExp').addEventListener('click', ()=>{
   const it = {id:uid(), name:'รายการใหม่'};
@@ -947,6 +972,8 @@ document.getElementById('addExp').addEventListener('click', ()=>{
   state.expenseMonthly[curKey][it.id] = {amount:0, paid:false};
   scheduleSave();
   renderExpenses();
+  const input = document.querySelector(`.row-name[data-id="${it.id}"]`);
+  if(input){ input.focus(); input.select(); }
 });
 
 document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
@@ -1016,6 +1043,19 @@ document.body.addEventListener('click', (e)=>{
       return;
     }
 
+    if(field==='note'){
+      const kind = editPill.dataset.kind; // 'card' or 'exp'
+      const list = kind==='card' ? state.cards : state.expenseItems;
+      const item = list.find(x=>x.id===id);
+      if(!item) return;
+      const val = prompt('หมายเหตุ:', item.note || '');
+      if(val===null) return;
+      item.note = val.trim();
+      scheduleSave();
+      if(kind==='card') renderCards(); else renderExpenses();
+      return;
+    }
+
     const card = state.cards.find(c=>c.id===id);
     const cur = card[field];
     const val = prompt(field==='cycle' ? 'วันตัดรอบ (1-31 หรือเว้นว่าง):' : 'วันจ่าย (1-31):', cur ?? '');
@@ -1070,7 +1110,10 @@ document.body.addEventListener('input', (e)=>{
   }
   if(field==='amount'){
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
-    if(rec){ rec.amount = parseAmount(t.value); }
+    if(rec){
+      rec.amount = parseAmount(t.value);
+      propagateForwardAmount(kind, id, curKey, rec.amount);
+    }
     scheduleSave();
     // Update only the totals, never rebuild the list here — rebuilding would
     // destroy the input the person is actively typing in and close the keyboard.
