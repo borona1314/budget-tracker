@@ -302,6 +302,7 @@
       </div>
       <div class="list" id="cardsList"></div>
     </div>
+    <button class="add-row" id="copyPrevCards">📋 ใช้ยอดเดือนก่อนหน้าทั้งหมด</button>
     <button class="add-row" id="exportCards">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addCard">➕ เพิ่มบัตร/บิลใหม่</button>
     <div class="footer-note"><button id="clearCardsMonth">ล้างยอดของเดือนนี้</button></div>
@@ -326,6 +327,7 @@
       </div>
       <div class="list" id="expList"></div>
     </div>
+    <button class="add-row" id="copyPrevExp">📋 ใช้ยอดเดือนก่อนหน้าทั้งหมด</button>
     <button class="add-row" id="exportExpenses">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addExp">➕ เพิ่มรายการค่าใช้จ่าย</button>
     <div class="footer-note"><button id="clearExpMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
@@ -992,6 +994,32 @@ document.getElementById('clearExpMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดและสถานะจ่ายของค่าใช้จ่ายทั้งหมดในเดือนนี้?')) return;
   state.expenseMonthly[curKey] = {};
   state.expenseItems.forEach(it=>{ state.expenseMonthly[curKey][it.id]={amount:0,paid:false}; });
+  scheduleSave();
+  renderExpenses();
+});
+document.getElementById('copyPrevCards').addEventListener('click', ()=>{
+  const prevKey = prevMonthKeyOf(curKey);
+  const prevData = state.cardMonthly[prevKey];
+  if(!prevData || Object.keys(prevData).length===0){ alert('เดือนก่อนหน้ายังไม่มีข้อมูลให้คัดลอก'); return; }
+  if(!confirm('คัดลอกยอดเงินทั้งหมดจากเดือนก่อนหน้ามาทับเดือนนี้?')) return;
+  ensureMonth(state, curKey);
+  state.cards.forEach(c=>{
+    const prevRec = prevData[c.id];
+    if(prevRec) state.cardMonthly[curKey][c.id].amount = prevRec.amount;
+  });
+  scheduleSave();
+  renderCards();
+});
+document.getElementById('copyPrevExp').addEventListener('click', ()=>{
+  const prevKey = prevMonthKeyOf(curKey);
+  const prevData = state.expenseMonthly[prevKey];
+  if(!prevData || Object.keys(prevData).length===0){ alert('เดือนก่อนหน้ายังไม่มีข้อมูลให้คัดลอก'); return; }
+  if(!confirm('คัดลอกยอดเงินทั้งหมดจากเดือนก่อนหน้ามาทับเดือนนี้?')) return;
+  ensureMonth(state, curKey);
+  state.expenseItems.forEach(it=>{
+    const prevRec = prevData[it.id];
+    if(prevRec) state.expenseMonthly[curKey][it.id].amount = prevRec.amount;
+  });
   scheduleSave();
   renderExpenses();
 });
