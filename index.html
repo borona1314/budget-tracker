@@ -263,23 +263,90 @@
   .hero-bar.pos .v{color:var(--paid);}
   .hero-bar.neg{border-color:var(--stamp);}
   .hero-bar.neg .v{color:var(--stamp);}
+
+  .pin-overlay{
+    position:fixed;inset:0;background:var(--paper);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .pin-box{
+    background:var(--card-bg);border:1px solid var(--rule);border-radius:16px;
+    padding:28px 24px;text-align:center;max-width:320px;width:100%;box-shadow:var(--shadow);
+  }
+  .pin-title{font-family:Georgia,serif;font-size:18px;margin-bottom:16px;}
+  .pin-input{
+    width:100%;text-align:center;font-size:24px;letter-spacing:8px;padding:12px;
+    border:1px solid var(--rule);border-radius:10px;background:var(--paper-deep);color:var(--ink);
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .pin-input:focus{outline:none;border-color:var(--stamp);}
+  .pin-submit{
+    width:100%;margin-top:12px;padding:11px;border-radius:10px;border:none;
+    background:var(--stamp);color:#fff;font-weight:700;font-size:14px;cursor:pointer;
+  }
+  .pin-error{color:var(--stamp);font-size:12px;margin-top:8px;min-height:14px;}
+
+  .alert-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--stamp-soft);border:1px solid var(--stamp);border-radius:12px;
+    padding:11px 14px;margin-bottom:14px;font-size:13px;color:var(--stamp);font-weight:600;
+  }
+  .alert-banner button{
+    border:none;background:transparent;color:var(--stamp);font-size:14px;cursor:pointer;
+    padding:2px 4px;flex:0 0 auto;
+  }
+
+  .inst-row{
+    background:var(--card-bg);border:1px solid var(--rule);border-radius:12px;
+    padding:12px;margin-bottom:8px;box-shadow:var(--shadow);
+  }
+  .inst-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .inst-row-top .name{font-size:14.5px;font-weight:600;}
+  .inst-row-top .prog{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:700;color:var(--stamp);
+    background:var(--paper-deep);border-radius:6px;padding:2px 8px;
+  }
+  .inst-bar-track{width:100%;height:8px;background:var(--paper-deep);border-radius:5px;overflow:hidden;margin-bottom:8px;}
+  .inst-bar-fill{height:100%;background:var(--stamp);border-radius:5px;}
+  .inst-row-bottom{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);}
+
+  .cat-pill-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .cat-pill{
+    font-size:11px;padding:4px 9px;border-radius:8px;background:var(--paper-deep);
+    color:var(--ink-soft);cursor:pointer;border:1px solid transparent;
+  }
+  .cat-pill.active{background:var(--stamp);color:#fff;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+<div id="pinOverlay" class="pin-overlay" style="display:none;">
+  <div class="pin-box">
+    <div class="pin-title">🔒 ใส่รหัสผ่าน</div>
+    <input type="password" id="pinInput" class="pin-input" inputmode="numeric" maxlength="8" placeholder="••••">
+    <button class="pin-submit" id="pinSubmit">ปลดล็อก</button>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
 <div class="wrap">
+  <div id="alertBanner" class="alert-banner" style="display:none;">
+    <div id="alertBannerText"></div>
+    <button id="alertBannerClose">✕</button>
+  </div>
+
   <header class="top">
     <div>
       <h1>📒 สมุดบัญชีค่าใช้จ่าย</h1>
-      <div class="sub">บัตร/บิล · ค่าใช้จ่ายรายเดือน · สรุปภาพรวม</div>
+      <div class="sub">บัตร/บิล · ค่าใช้จ่ายรายเดือน · ผ่อน · สรุปภาพรวม</div>
     </div>
   </header>
 
   <div class="tabs">
     <div class="tab active" data-tab="cards">💳 บัตร/บิล</div>
     <div class="tab" data-tab="expenses">🧾 ค่าใช้จ่าย</div>
+    <div class="tab" data-tab="installments">📆 ผ่อน</div>
     <div class="tab" data-tab="summary">📊 สรุป</div>
   </div>
 
@@ -336,19 +403,31 @@
     <div class="footer-note"><button id="clearExpMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
   </section>
 
+  <!-- INSTALLMENTS TAB -->
+  <section id="tab-installments" style="display:none;">
+    <div class="hero-bar" id="instBadge">
+      <div class="k">📆 ยอดผ่อนคงเหลือรวม</div>
+      <div class="v" id="instTotalRemainV">฿0</div>
+    </div>
+    <div class="list" id="instList"></div>
+  </section>
+
   <!-- SUMMARY TAB -->
   <section id="tab-summary" style="display:none;">
     <div class="tabs" style="margin-bottom:14px;">
       <div class="subtab active" data-sum="month">🗓️ รายเดือน</div>
       <div class="subtab" data-sum="year">📆 รายปี</div>
+      <div class="subtab" data-sum="category">🏷️ หมวดหมู่</div>
     </div>
     <div id="summaryCapture">
       <div class="list" id="summaryList"></div>
     </div>
     <button class="add-row" id="exportSummary" style="margin-top:14px;">📷 ดาวน์โหลดเป็นรูปภาพ</button>
+    <button class="add-row" id="exportCsv">📂 ส่งออกเป็น CSV</button>
   </section>
 
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
+  <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
 </div>
 <div class="save-flash" id="saveFlash">บันทึกแล้ว</div>
 
@@ -382,6 +461,10 @@ function installmentLabel(item, key){
 function noteLabel(it){
   if(!it.note) return '+ หมายเหตุ';
   return '📝 ' + (it.note.length>14 ? it.note.slice(0,14)+'…' : it.note);
+}
+function categoryLabel(it){
+  if(!it.category) return '+ หมวดหมู่';
+  return '🏷️ ' + it.category;
 }
 // When an amount is edited in month `fromKey`, carry that same value forward
 // into every month that hasn't actually happened yet in real life — this
@@ -721,6 +804,7 @@ function renderExpenses(){
       <div class="row-mid">
         <span class="pill installment-pill" style="cursor:pointer;" data-id="${it.id}" data-edit="installment" data-kind="exp">${installmentLabel(it, curKey) || '+ ตั้งผ่อน'}</span>
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="note" data-kind="exp">${noteLabel(it)}</span>
+        <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="category" data-kind="exp">${categoryLabel(it)}</span>
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
@@ -762,11 +846,112 @@ function monthTotals(key){
   return { cardTotal, expTotal, outTotal: cardTotal+expTotal, income };
 }
 
+function renderCategorySummary(list, todayKey){
+  const expM = state.expenseMonthly[todayKey] || {};
+  const byCat = {};
+  state.expenseItems.forEach(it=>{
+    const rec = expM[it.id];
+    const amt = rec ? Number(rec.amount)||0 : 0;
+    if(amt<=0) return;
+    const cat = it.category || 'ไม่ระบุหมวดหมู่';
+    byCat[cat] = (byCat[cat]||0) + amt;
+  });
+
+  const cats = Object.keys(byCat);
+  if(cats.length===0){
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีค่าใช้จ่ายเดือนนี้ให้แยกหมวดหมู่ 🌱<br>ตั้งหมวดหมู่ได้จากหน้าค่าใช้จ่าย</div>';
+    return;
+  }
+
+  const total = cats.reduce((s,c)=>s+byCat[c],0);
+  const maxVal = Math.max(...cats.map(c=>byCat[c]));
+  const sorted = cats.sort((a,b)=>byCat[b]-byCat[a]);
+
+  const header = document.createElement('div');
+  header.className = 'sum-empty';
+  header.style.padding = '4px 4px 12px';
+  header.style.textAlign = 'left';
+  header.style.color = 'var(--ink-soft)';
+  header.textContent = `📅 ${monthLabelFromKey(todayKey)} · รวม ${fmt(total)}`;
+  list.appendChild(header);
+
+  sorted.forEach(cat=>{
+    const val = byCat[cat];
+    const pct = Math.round((val/maxVal)*100);
+    const share = total>0 ? Math.round((val/total)*100) : 0;
+    const row = document.createElement('div');
+    row.className = 'sum-item';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <div class="sum-item-top">
+        <span class="label">🏷️ ${escapeHtml(cat)}</span>
+        <span class="sum-net pos" style="color:var(--ink);">${fmt(val)}</span>
+      </div>
+      <div class="sum-bar-track"><div class="sum-bar-fill" style="width:${pct}%"></div></div>
+      <div class="sum-item-bottom"><span>${share}% ของค่าใช้จ่ายทั้งหมด</span></div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function renderInstallments(){
+  const list = document.getElementById('instList');
+  if(!list) return; // not rendered yet at very first load
+  list.innerHTML = '';
+
+  const all = [
+    ...state.cards.map(c=>({item:c, kind:'card'})),
+    ...state.expenseItems.map(it=>({item:it, kind:'exp'}))
+  ].filter(x=>x.item.installment);
+
+  if(all.length===0){
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีรายการที่ตั้งผ่อนไว้ 🌱</div>';
+    document.getElementById('instTotalRemainV').textContent = fmt(0);
+    return;
+  }
+
+  let totalRemain = 0;
+  all.forEach(({item, kind})=>{
+    const n = currentInstallmentNumber(item, curKey);
+    const total = item.installment.total;
+    const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
+    const rec = (store[curKey]||{})[item.id];
+    const monthlyAmount = rec ? Number(rec.amount)||0 : 0;
+    const done = n > total;
+    const remainingMonths = done ? 0 : Math.max(0, total - n + 1);
+    const remainingAmount = remainingMonths * monthlyAmount;
+    totalRemain += remainingAmount;
+
+    const pct = Math.min(100, Math.max(0, Math.round(((n-1)/total)*100)));
+    const row = document.createElement('div');
+    row.className = 'inst-row';
+    row.innerHTML = `
+      <div class="inst-row-top">
+        <span class="name">${kind==='card'?'💳':'🧾'} ${escapeHtml(item.name)}</span>
+        <span class="prog">${done ? 'ครบแล้ว ✅' : `${n}/${total}`}</span>
+      </div>
+      <div class="inst-bar-track"><div class="inst-bar-fill" style="width:${pct}%"></div></div>
+      <div class="inst-row-bottom">
+        <span>฿${monthlyAmount.toLocaleString('en-US')}/เดือน</span>
+        <span>${done ? 'จ่ายครบแล้ว' : `เหลือ ${remainingMonths} งวด · ${fmt(remainingAmount)}`}</span>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  document.getElementById('instTotalRemainV').textContent = fmt(totalRemain);
+}
+
 function renderSummary(){
   const list = document.getElementById('summaryList');
   list.innerHTML = '';
 
   const todayKey = monthKey(new Date());
+
+  if(sumView==='category'){
+    renderCategorySummary(list, todayKey);
+    return;
+  }
 
   // collect every month key that has any data at all, but only ones that
   // have actually happened in real life — future months get auto-filled
@@ -874,6 +1059,74 @@ function renderAll(){
   renderCards();
   renderExpenses();
   renderSummary();
+  renderInstallments();
+  checkAlertBanner();
+}
+
+let bannerDismissed = false;
+function checkAlertBanner(){
+  const banner = document.getElementById('alertBanner');
+  const textEl = document.getElementById('alertBannerText');
+  if(bannerDismissed){ banner.style.display='none'; return; }
+
+  const today = new Date();
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+  const todayNum = today.getDate();
+  const tomorrowNum = tomorrow.getDate();
+  const todayKey = monthKey(today);
+  const messages = [];
+
+  const dueSoon = state.cards.filter(c=>c.pay===todayNum || c.pay===tomorrowNum);
+  if(dueSoon.length>0){
+    const names = dueSoon.slice(0,3).map(c=>escapeHtml(c.name)).join(', ');
+    messages.push(`🔔 มีบิลใกล้ครบกำหนด: ${names}${dueSoon.length>3?' และอื่นๆ':''}`);
+  }
+
+  const t = monthTotals(todayKey);
+  if(t.income>0 && t.outTotal > t.income){
+    messages.push(`⚠️ ใช้จ่ายเดือนนี้เกินรายรับแล้ว ${fmt(t.outTotal - t.income)}`);
+  }
+
+  if(messages.length===0){ banner.style.display='none'; return; }
+  textEl.innerHTML = messages.join('<br>');
+  banner.style.display = 'flex';
+}
+
+function exportCsv(){
+  const rows = [['ประเภท','เดือน','ชื่อ','ยอดเงิน','หมายเหตุ/สถานะ']];
+  Object.keys(state.cardMonthly).sort().forEach(key=>{
+    state.cards.forEach(c=>{
+      const rec = state.cardMonthly[key][c.id];
+      if(!rec) return;
+      rows.push(['บัตร/บิล', key, c.name, rec.amount||0, c.note||'']);
+    });
+  });
+  Object.keys(state.expenseMonthly).sort().forEach(key=>{
+    state.expenseItems.forEach(it=>{
+      const rec = state.expenseMonthly[key][it.id];
+      if(!rec) return;
+      rows.push(['ค่าใช้จ่าย', key, it.name, rec.amount||0, rec.paid?'จ่ายแล้ว':'ยังไม่จ่าย']);
+    });
+  });
+  Object.keys(state.income).sort().forEach(key=>{
+    rows.push(['รายรับ', key, 'รายรับเดือนนี้', state.income[key]||0, '']);
+  });
+
+  const csv = rows.map(r=>r.map(cell=>{
+    const s = String(cell).replace(/"/g,'""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  }).join(',')).join('\n');
+
+  const bom = '\uFEFF'; // makes Excel read Thai UTF-8 text correctly
+  const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = `budget-export-${new Date().toISOString().slice(0,10)}.csv`;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
 }
 
 // ---- events ----
@@ -884,9 +1137,11 @@ document.querySelectorAll('.tab').forEach(t=>{
     activeTab = t.dataset.tab;
     document.getElementById('tab-cards').style.display = activeTab==='cards' ? '' : 'none';
     document.getElementById('tab-expenses').style.display = activeTab==='expenses' ? '' : 'none';
+    document.getElementById('tab-installments').style.display = activeTab==='installments' ? '' : 'none';
     document.getElementById('tab-summary').style.display = activeTab==='summary' ? '' : 'none';
-    document.getElementById('monthBar').style.display = activeTab==='summary' ? 'none' : '';
+    document.getElementById('monthBar').style.display = (activeTab==='summary'||activeTab==='installments') ? 'none' : '';
     if(activeTab==='summary') renderSummary();
+    if(activeTab==='installments') renderInstallments();
   });
 });
 
@@ -1092,6 +1347,19 @@ document.body.addEventListener('click', (e)=>{
       return;
     }
 
+    if(field==='category'){
+      const kind = editPill.dataset.kind; // 'exp' (categories are on expense items)
+      const list = kind==='card' ? state.cards : state.expenseItems;
+      const item = list.find(x=>x.id===id);
+      if(!item) return;
+      const val = prompt('หมวดหมู่ (เช่น ที่อยู่, ประกัน, บัตรเครดิต, สมาชิกรายเดือน, อาหาร, เดินทาง) — เว้นว่างเพื่อลบ:', item.category || '');
+      if(val===null) return;
+      item.category = val.trim();
+      scheduleSave();
+      if(kind==='card') renderCards(); else renderExpenses();
+      return;
+    }
+
     const card = state.cards.find(c=>c.id===id);
     const cur = card[field];
     const val = prompt(field==='cycle' ? 'วันตัดรอบ (1-31 หรือเว้นว่าง):' : 'วันจ่าย (1-31):', cur ?? '');
@@ -1186,7 +1454,62 @@ document.body.addEventListener('focusout', (e)=>{
   }
 });
 
+document.getElementById('alertBannerClose').addEventListener('click', ()=>{
+  bannerDismissed = true;
+  document.getElementById('alertBanner').style.display = 'none';
+});
+
+document.getElementById('exportCsv').addEventListener('click', exportCsv);
+
+// ---- PIN lock (stored locally on this device only — casual privacy, not strong security) ----
+function checkPinLock(){
+  const pin = localStorage.getItem('budgetPin');
+  if(!pin) return;
+  document.getElementById('pinOverlay').style.display = 'flex';
+  document.getElementById('pinInput').focus();
+}
+function tryUnlock(){
+  const entered = document.getElementById('pinInput').value;
+  const pin = localStorage.getItem('budgetPin');
+  if(entered === pin){
+    document.getElementById('pinOverlay').style.display = 'none';
+    document.getElementById('pinError').textContent = '';
+  }else{
+    document.getElementById('pinError').textContent = 'รหัสผ่านไม่ถูกต้อง';
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+document.getElementById('pinSubmit').addEventListener('click', tryUnlock);
+document.getElementById('pinInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') tryUnlock();
+});
+document.getElementById('pinSettingsBtn').addEventListener('click', ()=>{
+  const existing = localStorage.getItem('budgetPin');
+  if(existing){
+    const check = prompt('ใส่รหัสผ่านเดิมเพื่อยืนยันตัวตนก่อน:');
+    if(check===null) return;
+    if(check !== existing){ alert('รหัสผ่านไม่ถูกต้อง'); return; }
+    const wantsChange = confirm('กด "ตกลง" เพื่อตั้งรหัสผ่านใหม่ หรือ "ยกเลิก" เพื่อลบรหัสผ่านออกทั้งหมด');
+    if(wantsChange){
+      const newPin = prompt('ใส่รหัสผ่านใหม่ (ตัวเลข 4-8 หลัก):');
+      if(!newPin || !newPin.trim()) return;
+      localStorage.setItem('budgetPin', newPin.trim());
+      alert('ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว');
+    }else{
+      localStorage.removeItem('budgetPin');
+      alert('ลบรหัสผ่านเรียบร้อยแล้ว ครั้งหน้าเปิดแอปจะไม่ถามรหัสผ่านอีก');
+    }
+  }else{
+    const newPin = prompt('ตั้งรหัสผ่านใหม่ (ตัวเลข 4-8 หลัก) เพื่อล็อกแอปนี้บนเครื่องนี้:');
+    if(!newPin || !newPin.trim()) return;
+    localStorage.setItem('budgetPin', newPin.trim());
+    alert('ตั้งรหัสผ่านเรียบร้อยแล้ว ครั้งหน้าที่เปิดแอปบนเครื่องนี้จะต้องใส่รหัสผ่านนี้ก่อนเข้าใช้งาน');
+  }
+});
+
 try{
+  checkPinLock();
   state = freshDefault();
   renderAll();
   attachRealtimeListener();
