@@ -316,6 +316,50 @@
     color:var(--ink-soft);cursor:pointer;border:1px solid transparent;
   }
   .cat-pill.active{background:var(--stamp);color:#fff;}
+
+  .top{position:relative;}
+  .top-controls{display:flex;gap:6px;align-items:flex-start;flex:0 0 auto;}
+  .top-controls button{
+    width:34px;height:34px;border-radius:9px;border:1px solid var(--rule);background:var(--card-bg);
+    font-size:15px;cursor:pointer;color:var(--ink);
+  }
+  .top-controls button:disabled{opacity:.35;cursor:default;}
+
+  .search-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
+  .search-bar input{
+    flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);
+    background:var(--card-bg);color:var(--ink);font-size:14px;font-family:inherit;
+  }
+  .search-bar input:focus{outline:none;border-color:var(--stamp);}
+  .search-bar button{
+    width:38px;height:38px;border-radius:10px;border:1px solid var(--rule);background:var(--card-bg);
+    color:var(--ink-soft);cursor:pointer;flex:0 0 auto;
+  }
+
+  .cat-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:90;}
+  .cat-modal{
+    position:fixed;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:91;
+    background:var(--paper);border-radius:16px;padding:18px;max-width:420px;margin:0 auto;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);max-height:70vh;overflow-y:auto;
+  }
+  .cat-modal-title{font-family:Georgia,serif;font-size:16px;margin-bottom:10px;}
+  .cat-modal-add{display:flex;gap:6px;margin:10px 0;}
+  .cat-modal-add input{
+    flex:1;padding:9px 10px;border-radius:9px;border:1px solid var(--rule);
+    background:var(--card-bg);color:var(--ink);font-size:13px;font-family:inherit;
+  }
+  .cat-modal-add button{
+    padding:9px 14px;border-radius:9px;border:none;background:var(--stamp);color:#fff;
+    font-size:13px;font-weight:700;cursor:pointer;
+  }
+
+  /* Dark theme overrides */
+  html[data-theme="dark"]{
+    --paper:#1C1B19; --paper-deep:#26241F; --rule:#3A362E; --ink:#F0E9DA;
+    --ink-soft:#B8AFA0; --ink-faint:#7C7566; --stamp:#E0745A; --stamp-soft:#3A241D;
+    --paid:#7FBF9A; --paid-soft:#1F2E24; --card-bg:#242220;
+  }
+  html[data-theme="dark"] .date-badge .box{background:var(--paper-deep);}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -342,7 +386,18 @@
       <h1>📒 สมุดบัญชีค่าใช้จ่าย</h1>
       <div class="sub">บัตร/บิล · ค่าใช้จ่ายรายเดือน · ผ่อน · สรุปภาพรวม</div>
     </div>
+    <div class="top-controls">
+      <button id="undoBtn" title="เลิกทำ" disabled>↩️</button>
+      <button id="redoBtn" title="ทำซ้ำ" disabled>↪️</button>
+      <button id="themeToggleBtn" title="สลับธีม">🌙</button>
+      <button id="searchToggleBtn" title="ค้นหา">🔍</button>
+    </div>
   </header>
+
+  <div class="search-bar" id="searchBar" style="display:none;">
+    <input type="text" id="searchInput" placeholder="ค้นหาชื่อรายการ...">
+    <button id="searchClearBtn">✕</button>
+  </div>
 
   <div class="tabs">
     <div class="tab active" data-tab="cards">💳 บัตร/บิล</div>
@@ -432,6 +487,18 @@
 </div>
 <div class="save-flash" id="saveFlash">บันทึกแล้ว</div>
 
+<div class="cat-modal-backdrop" id="catModalBackdrop" style="display:none;"></div>
+<div class="cat-modal" id="catModal" style="display:none;">
+  <div class="cat-modal-title">เลือกหมวดหมู่</div>
+  <div class="cat-pill-list" id="catModalList"></div>
+  <div class="cat-modal-add">
+    <input id="catModalInput" placeholder="เพิ่มหมวดหมู่ใหม่...">
+    <button id="catModalAddBtn">เพิ่ม</button>
+  </div>
+  <button class="add-row" id="catModalClear">ไม่ระบุหมวดหมู่</button>
+  <button class="add-row" id="catModalCloseBtn">ปิด</button>
+</div>
+
 <script>
 const THAI_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
   "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
@@ -466,6 +533,49 @@ function noteLabel(it){
 function categoryLabel(it){
   if(!it.category) return '+ หมวดหมู่';
   return '🏷️ ' + it.category;
+}
+
+let categoryPickerTargetId = null;
+function getAllKnownCategories(){
+  const set = new Set();
+  state.expenseItems.forEach(it=>{ if(it.category) set.add(it.category); });
+  return [...set].sort();
+}
+function openCategoryPicker(itemId){
+  categoryPickerTargetId = itemId;
+  const item = state.expenseItems.find(x=>x.id===itemId);
+  if(!item) return;
+  const listEl = document.getElementById('catModalList');
+  listEl.innerHTML = '';
+  const cats = getAllKnownCategories();
+  if(cats.length===0){
+    const empty = document.createElement('div');
+    empty.style.fontSize = '12px';
+    empty.style.color = 'var(--ink-faint)';
+    empty.textContent = 'ยังไม่มีหมวดหมู่ในระบบ พิมพ์เพิ่มด้านล่างได้เลย';
+    listEl.appendChild(empty);
+  }
+  cats.forEach(cat=>{
+    const chip = document.createElement('span');
+    chip.className = 'cat-pill' + (item.category===cat ? ' active' : '');
+    chip.textContent = cat;
+    chip.addEventListener('click', ()=>{
+      item.category = cat;
+      pushHistory();
+      scheduleSave();
+      renderExpenses();
+      closeCategoryPicker();
+    });
+    listEl.appendChild(chip);
+  });
+  document.getElementById('catModalInput').value = '';
+  document.getElementById('catModalBackdrop').style.display = 'block';
+  document.getElementById('catModal').style.display = 'block';
+}
+function closeCategoryPicker(){
+  categoryPickerTargetId = null;
+  document.getElementById('catModalBackdrop').style.display = 'none';
+  document.getElementById('catModal').style.display = 'none';
 }
 // When an amount is edited in month `fromKey`, carry that same value forward
 // into every month that hasn't actually happened yet in real life — this
@@ -679,6 +789,7 @@ function sanitizeState(st){
 
 function attachRealtimeListener(){
   if(!dataRef) return;
+  let historyBaselineSet = false;
   dataRef.on('value', (snapshot)=>{
     const val = snapshot.val();
     if(!val){
@@ -686,6 +797,7 @@ function attachRealtimeListener(){
       state = freshDefault();
       persist(state);
       renderAll();
+      if(!historyBaselineSet){ historyStack=[]; historyIndex=-1; pushHistory(); historyBaselineSet = true; }
       return;
     }
     if(val.__writer === clientId){
@@ -699,6 +811,7 @@ function attachRealtimeListener(){
     state = val;
     const hadOrphans = sanitizeState(state);
     renderAll();
+    if(!historyBaselineSet){ historyStack=[]; historyIndex=-1; pushHistory(); historyBaselineSet = true; }
     if(hadOrphans) scheduleSave(); // persist the cleaned-up version so the ghost doesn't come back
   }, (err)=>{ console.error('firebase read failed', err); });
 }
@@ -799,6 +912,7 @@ function renderCards(){
     list.appendChild(row);
   });
   document.getElementById('cardsTotalV').textContent = fmt(total);
+  applySearchFilter();
 }
 
 function renderExpenses(){
@@ -836,6 +950,7 @@ function renderExpenses(){
   const income = Number(state.income[curKey])||0;
   updateExpRemain(income-total);
   document.getElementById('incomeInput').value = toDisplayAmount(state.income[curKey]);
+  applySearchFilter();
 }
 
 function updateExpRemain(net){
@@ -1241,6 +1356,7 @@ document.getElementById('addCard').addEventListener('click', ()=>{
   state.cards.push(c);
   ensureMonth(state, curKey);
   state.cardMonthly[curKey][c.id] = {amount:0, paid:false};
+  pushHistory();
   scheduleSave();
   renderCards();
   const input = document.querySelector(`.row-name[data-id="${c.id}"]`);
@@ -1251,6 +1367,7 @@ document.getElementById('addExp').addEventListener('click', ()=>{
   state.expenseItems.push(it);
   ensureMonth(state, curKey);
   state.expenseMonthly[curKey][it.id] = {amount:0, paid:false};
+  pushHistory();
   scheduleSave();
   renderExpenses();
   const input = document.querySelector(`.row-name[data-id="${it.id}"]`);
@@ -1261,6 +1378,7 @@ document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
   state.cardMonthly[curKey] = {};
   state.cards.forEach(c=>{ state.cardMonthly[curKey][c.id]={amount:0,paid:false}; });
+  pushHistory();
   scheduleSave();
   renderCards();
 });
@@ -1268,6 +1386,7 @@ document.getElementById('clearExpMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดและสถานะจ่ายของค่าใช้จ่ายทั้งหมดในเดือนนี้?')) return;
   state.expenseMonthly[curKey] = {};
   state.expenseItems.forEach(it=>{ state.expenseMonthly[curKey][it.id]={amount:0,paid:false}; });
+  pushHistory();
   scheduleSave();
   renderExpenses();
 });
@@ -1281,6 +1400,7 @@ document.getElementById('copyPrevCards').addEventListener('click', ()=>{
     const prevRec = prevData[c.id];
     if(prevRec) state.cardMonthly[curKey][c.id].amount = prevRec.amount;
   });
+  pushHistory();
   scheduleSave();
   renderCards();
 });
@@ -1294,6 +1414,7 @@ document.getElementById('copyPrevExp').addEventListener('click', ()=>{
     const prevRec = prevData[it.id];
     if(prevRec) state.expenseMonthly[curKey][it.id].amount = prevRec.amount;
   });
+  pushHistory();
   scheduleSave();
   renderExpenses();
 });
@@ -1314,11 +1435,13 @@ document.body.addEventListener('click', (e)=>{
       if(!confirm('ลบบัตร/บิลนี้ออกจากรายการ?')) return;
       state.cards = state.cards.filter(c=>c.id!==id);
       Object.keys(state.cardMonthly).forEach(k=>{ delete state.cardMonthly[k][id]; });
+      pushHistory();
       scheduleSave(); renderCards();
     }else if(type==='exp'){
       if(!confirm('ลบรายการค่าใช้จ่ายนี้ออก?')) return;
       state.expenseItems = state.expenseItems.filter(i=>i.id!==id);
       Object.keys(state.expenseMonthly).forEach(k=>{ delete state.expenseMonthly[k][id]; });
+      pushHistory();
       scheduleSave(); renderExpenses();
     }
     return;
@@ -1345,6 +1468,7 @@ document.body.addEventListener('click', (e)=>{
         const curNum = Number(curNumStr)||1;
         item.installment = { total, startKey: monthKeyAddMonths(curKey, -(curNum-1)) };
       }
+      pushHistory();
       scheduleSave();
       if(kind==='card') renderCards(); else renderExpenses();
       return;
@@ -1358,21 +1482,14 @@ document.body.addEventListener('click', (e)=>{
       const val = prompt('หมายเหตุ:', item.note || '');
       if(val===null) return;
       item.note = val.trim();
+      pushHistory();
       scheduleSave();
       if(kind==='card') renderCards(); else renderExpenses();
       return;
     }
 
     if(field==='category'){
-      const kind = editPill.dataset.kind; // 'exp' (categories are on expense items)
-      const list = kind==='card' ? state.cards : state.expenseItems;
-      const item = list.find(x=>x.id===id);
-      if(!item) return;
-      const val = prompt('หมวดหมู่ (เช่น ที่อยู่, ประกัน, บัตรเครดิต, สมาชิกรายเดือน, อาหาร, เดินทาง) — เว้นว่างเพื่อลบ:', item.category || '');
-      if(val===null) return;
-      item.category = val.trim();
-      scheduleSave();
-      if(kind==='card') renderCards(); else renderExpenses();
+      openCategoryPicker(id);
       return;
     }
 
@@ -1382,6 +1499,7 @@ document.body.addEventListener('click', (e)=>{
     if(val===null) return;
     const num = val.trim()==='' ? null : Number(val);
     card[field] = Number.isNaN(num) ? null : num;
+    pushHistory();
     scheduleSave(); renderCards();
     return;
   }
@@ -1448,6 +1566,7 @@ document.body.addEventListener('change', (e)=>{
     const id = t.dataset.id, kind = t.dataset.kind;
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){ rec.paid = t.checked; }
+    pushHistory();
     scheduleSave();
     if(kind==='card') renderCards(); else renderExpenses();
   }
@@ -1455,7 +1574,9 @@ document.body.addEventListener('change', (e)=>{
 
 // Amount fields show commas normally, but switch to plain digits while being
 // edited so the cursor never jumps around a comma mid-typing, then reformat
-// with commas again once the person taps away.
+// with commas again once the person taps away. History is snapshotted once
+// per edit session (on blur, capturing the finished value) rather than on
+// every keystroke.
 document.body.addEventListener('focusin', (e)=>{
   const t = e.target;
   if(t.classList && t.classList.contains('amount-input')){
@@ -1467,6 +1588,7 @@ document.body.addEventListener('focusout', (e)=>{
   const t = e.target;
   if(t.classList && t.classList.contains('amount-input')){
     t.value = toDisplayAmount(parseAmount(t.value));
+    pushHistory();
   }
 });
 
@@ -1476,6 +1598,115 @@ document.getElementById('alertBannerClose').addEventListener('click', ()=>{
 });
 
 document.getElementById('exportCsv').addEventListener('click', exportCsv);
+
+// ---- category picker modal buttons ----
+document.getElementById('catModalBackdrop').addEventListener('click', closeCategoryPicker);
+document.getElementById('catModalCloseBtn').addEventListener('click', closeCategoryPicker);
+document.getElementById('catModalClear').addEventListener('click', ()=>{
+  const item = state.expenseItems.find(x=>x.id===categoryPickerTargetId);
+  if(item){
+    item.category = '';
+    pushHistory();
+    scheduleSave();
+    renderExpenses();
+  }
+  closeCategoryPicker();
+});
+document.getElementById('catModalAddBtn').addEventListener('click', ()=>{
+  const val = document.getElementById('catModalInput').value.trim();
+  if(!val) return;
+  const item = state.expenseItems.find(x=>x.id===categoryPickerTargetId);
+  if(item){
+    item.category = val;
+    pushHistory();
+    scheduleSave();
+    renderExpenses();
+  }
+  closeCategoryPicker();
+});
+document.getElementById('catModalInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter') document.getElementById('catModalAddBtn').click();
+});
+
+// ---- theme toggle (dark/light), persisted per device ----
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggleBtn').textContent = theme==='dark' ? '☀️' : '🌙';
+  localStorage.setItem('budgetTheme', theme);
+}
+document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current==='dark' ? 'light' : 'dark');
+});
+
+// ---- search ----
+function applySearchFilter(){
+  const term = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  const listId = activeTab==='cards' ? 'cardsList' : (activeTab==='expenses' ? 'expList' : null);
+  if(!listId) return;
+  const container = document.getElementById(listId);
+  if(!container) return;
+  container.querySelectorAll('.row').forEach(row=>{
+    const nameInput = row.querySelector('.row-name');
+    const name = nameInput ? nameInput.value.toLowerCase() : '';
+    row.style.display = (!term || name.includes(term)) ? '' : 'none';
+  });
+}
+document.getElementById('searchToggleBtn').addEventListener('click', ()=>{
+  const bar = document.getElementById('searchBar');
+  const showing = bar.style.display !== 'none';
+  bar.style.display = showing ? 'none' : 'flex';
+  if(!showing) document.getElementById('searchInput').focus();
+  else { document.getElementById('searchInput').value=''; applySearchFilter(); }
+});
+document.getElementById('searchInput').addEventListener('input', applySearchFilter);
+document.getElementById('searchClearBtn').addEventListener('click', ()=>{
+  document.getElementById('searchInput').value = '';
+  applySearchFilter();
+  document.getElementById('searchInput').focus();
+});
+
+// ---- undo / redo ----
+let historyStack = [];
+let historyIndex = -1;
+let suppressHistory = false;
+function pushHistory(){
+  if(suppressHistory) return;
+  const snap = JSON.stringify(state);
+  historyStack = historyStack.slice(0, historyIndex+1);
+  historyStack.push(snap);
+  if(historyStack.length > 30) historyStack.shift();
+  historyIndex = historyStack.length - 1;
+  updateUndoRedoButtons();
+}
+function updateUndoRedoButtons(){
+  document.getElementById('undoBtn').disabled = historyIndex <= 0;
+  document.getElementById('redoBtn').disabled = historyIndex >= historyStack.length-1;
+}
+function doUndo(){
+  if(historyIndex <= 0) return;
+  historyIndex--;
+  suppressHistory = true;
+  state = JSON.parse(historyStack[historyIndex]);
+  scheduleSave();
+  renderAll();
+  applySearchFilter();
+  suppressHistory = false;
+  updateUndoRedoButtons();
+}
+function doRedo(){
+  if(historyIndex >= historyStack.length-1) return;
+  historyIndex++;
+  suppressHistory = true;
+  state = JSON.parse(historyStack[historyIndex]);
+  scheduleSave();
+  renderAll();
+  applySearchFilter();
+  suppressHistory = false;
+  updateUndoRedoButtons();
+}
+document.getElementById('undoBtn').addEventListener('click', doUndo);
+document.getElementById('redoBtn').addEventListener('click', doRedo);
 
 // ---- PIN lock (stored locally on this device only — casual privacy, not strong security) ----
 function checkPinLock(){
@@ -1525,9 +1756,11 @@ document.getElementById('pinSettingsBtn').addEventListener('click', ()=>{
 });
 
 try{
+  applyTheme(localStorage.getItem('budgetTheme') || 'light');
   checkPinLock();
   state = freshDefault();
   renderAll();
+  pushHistory();
   attachRealtimeListener();
 }catch(e){
   console.error('init failed', e);
