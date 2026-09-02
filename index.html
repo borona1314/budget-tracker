@@ -218,8 +218,9 @@
     font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:26px;line-height:1;color:var(--stamp);
   }
   .date-badge .dlabel{font-size:9px;color:var(--stamp);margin-top:2px;letter-spacing:.3px;font-weight:700;}
-  .date-badge.today .box{background:var(--stamp);border-color:var(--stamp);}
-  .date-badge.today .dnum, .date-badge.today .dlabel{color:#fff;}
+  .date-badge.today .box, .date-badge.passed .box{background:var(--stamp);border-color:var(--stamp);}
+  .date-badge.today .dnum, .date-badge.today .dlabel,
+  .date-badge.passed .dnum, .date-badge.passed .dlabel{color:#fff;}
   .date-edit{display:flex;flex-direction:column;gap:3px;width:100%;}
   .date-edit span{
     font-size:9px;text-align:center;color:var(--ink-soft);background:var(--paper-deep);
@@ -727,6 +728,21 @@ function renderMonthLabel(){
   document.getElementById('monthLabel').textContent = '📅 ' + monthLabelFromKey(curKey);
 }
 
+function isPastPayDate(pay, key){
+  if(pay==null) return false;
+  const [y,m] = key.split('-').map(Number);
+  const payDate = new Date(y, m-1, pay);
+  const today = new Date();
+  const todayStripped = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return payDate.getTime() < todayStripped.getTime();
+}
+function isTodayPayDate(pay, key){
+  if(pay==null) return false;
+  const [y,m] = key.split('-').map(Number);
+  const today = new Date();
+  return y===today.getFullYear() && (m-1)===today.getMonth() && pay===today.getDate();
+}
+
 function renderCards(){
   ensureMonth(state, curKey);
   const list = document.getElementById('cardsList');
@@ -736,7 +752,6 @@ function renderCards(){
     const pb = b.pay==null ? 999 : b.pay;
     return pa-pb;
   });
-  const todayNum = new Date().getDate();
   let total=0;
   let lastPay = undefined;
 
@@ -745,13 +760,14 @@ function renderCards(){
     total += Number(rec.amount)||0;
     const isFirstOfDay = c.pay !== lastPay;
     lastPay = c.pay;
-    const isToday = c.pay===todayNum;
+    const isToday = isTodayPayDate(c.pay, curKey);
+    const isPast = !isToday && isPastPayDate(c.pay, curKey);
 
     const row = document.createElement('div');
     row.className = 'row card-row';
     if(isFirstOfDay) row.id = c.pay==null ? 'day-none' : 'day-'+c.pay;
     row.innerHTML = `
-      <div class="date-badge${isToday?' today':''}">
+      <div class="date-badge${isToday?' today':''}${isPast?' passed':''}">
         <div class="box">
           <div class="dnum">${c.pay ?? '?'}</div>
           <div class="dlabel">จ่าย</div>
