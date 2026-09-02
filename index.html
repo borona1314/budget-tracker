@@ -360,6 +360,14 @@
     --paid:#7FBF9A; --paid-soft:#1F2E24; --card-bg:#242220;
   }
   html[data-theme="dark"] .date-badge .box{background:var(--paper-deep);}
+
+  .row.dragging, .card-row.dragging{
+    opacity:.85;box-shadow:0 10px 24px rgba(0,0,0,.25);position:relative;z-index:50;
+    touch-action:none;
+  }
+  .row.drag-armed, .card-row.drag-armed{
+    box-shadow:0 0 0 2px var(--stamp);
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -414,6 +422,7 @@
 
   <!-- CARDS TAB -->
   <section id="tab-cards">
+    <button class="add-row" id="addCardTop">➕ เพิ่มบัตร/บิลใหม่</button>
     <div id="cardsCapture">
       <div class="cal-wrap" id="calWrap">
         <div class="cal-weekdays">
@@ -432,10 +441,12 @@
     <button class="add-row" id="exportCards">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addCard">➕ เพิ่มบัตร/บิลใหม่</button>
     <div class="footer-note"><button id="clearCardsMonth">ล้างยอดของเดือนนี้</button></div>
+    <div class="footer-note">💡 กดค้างที่รายการเพื่อจัดเรียงลำดับใหม่</div>
   </section>
 
   <!-- EXPENSES TAB -->
   <section id="tab-expenses" style="display:none;">
+    <button class="add-row" id="addExpTop">➕ เพิ่มรายการค่าใช้จ่าย</button>
     <div id="expensesCapture">
       <div class="income-box">
         <div class="k">💰 รายรับเดือนนี้</div>
@@ -456,7 +467,8 @@
     <button class="add-row" id="copyPrevExp">📋 ใช้ยอดเดือนก่อนหน้าทั้งหมด</button>
     <button class="add-row" id="exportExpenses">📷 ดาวน์โหลดเป็นรูปภาพ</button>
     <button class="add-row" id="addExp">➕ เพิ่มรายการค่าใช้จ่าย</button>
-    <div class="footer-note"><button id="clearExpMonth">ล้างยอด/สถานะจ่ายของเดือนนี้</button></div>
+    <div class="footer-note"><button id="clearExpMonth">ล้างยอดทั้งหมด</button> · <button id="clearExpPaidOnly">ล้างสถานะจ่ายแล้วทั้งหมด</button></div>
+    <div class="footer-note">💡 กดค้างที่รายการเพื่อจัดเรียงลำดับใหม่</div>
   </section>
 
   <!-- INSTALLMENTS TAB -->
@@ -678,6 +690,10 @@ function defaultState(){
     income: {}
   };
 }
+function assignSortIndexes(st){
+  st.cards.forEach((c,i)=>{ if(c.sortIndex===undefined) c.sortIndex = i; });
+  st.expenseItems.forEach((it,i)=>{ if(it.sortIndex===undefined) it.sortIndex = i; });
+}
 
 function seedFirstMonth(st){
   const key = monthKey(new Date());
@@ -705,6 +721,7 @@ function seedFirstMonth(st){
 function freshDefault(){
   const st = defaultState();
   seedFirstMonth(st);
+  assignSortIndexes(st);
   return st;
 }
 
@@ -806,10 +823,12 @@ function attachRealtimeListener(){
       // destroy whatever input the person is actively typing into
       state = val;
       sanitizeState(state);
+      assignSortIndexes(state);
       return;
     }
     state = val;
     const hadOrphans = sanitizeState(state);
+    assignSortIndexes(state);
     renderAll();
     if(!historyBaselineSet){ historyStack=[]; historyIndex=-1; pushHistory(); historyBaselineSet = true; }
     if(hadOrphans) scheduleSave(); // persist the cleaned-up version so the ghost doesn't come back
@@ -863,7 +882,8 @@ function renderCards(){
   const sorted = [...state.cards].sort((a,b)=>{
     const pa = a.pay==null ? 999 : a.pay;
     const pb = b.pay==null ? 999 : b.pay;
-    return pa-pb;
+    if(pa!==pb) return pa-pb;
+    return (a.sortIndex||0)-(b.sortIndex||0);
   });
   let total=0;
   let lastPay = undefined;
@@ -920,7 +940,8 @@ function renderExpenses(){
   const list = document.getElementById('expList');
   list.innerHTML = '';
   let total=0, paid=0;
-  state.expenseItems.forEach(it=>{
+  const sortedItems = [...state.expenseItems].sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  sortedItems.forEach(it=>{
     const rec = state.expenseMonthly[curKey][it.id];
     total += Number(rec.amount)||0;
     if(rec.paid) paid += Number(rec.amount)||0;
@@ -974,7 +995,9 @@ function monthTotals(key){
   Object.values(cardM).forEach(r=>{ cardTotal += Number(r.amount)||0; });
   Object.values(expM).forEach(r=>{ expTotal += Number(r.amount)||0; });
   const income = Number(state.income[key])||0;
-  return { cardTotal, expTotal, outTotal: cardTotal+expTotal, income };
+  // outTotal intentionally excludes card/bill payments — the summary tab
+  // should reflect real day-to-day expenses only, not recurring bills
+  return { cardTotal, expTotal, outTotal: expTotal, income };
 }
 
 function renderCategorySummary(list, todayKey){
@@ -1260,6 +1283,113 @@ function exportCsv(){
   setTimeout(()=>URL.revokeObjectURL(url), 5000);
 }
 
+// ---- long-press drag-to-reorder ----
+// Long-press a row (avoiding inputs/buttons/pills so normal taps still work
+// everywhere else) to pick it up, drag it over other rows to reposition, and
+// release to drop. On drop, sortIndex is recomputed from the final order.
+function enableReorder(container, rowSelector, getItems, applyOrder){
+  let dragEl = null;
+  let longPressTimer = null;
+  let startX = 0, startY = 0;
+  let pointerId = null;
+
+  container.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('input,button,.pill,[data-edit],label')) return;
+    const row = e.target.closest(rowSelector);
+    if(!row) return;
+    startX = e.clientX; startY = e.clientY;
+    pointerId = e.pointerId;
+    row.classList.add('drag-armed');
+    longPressTimer = setTimeout(()=>{
+      row.classList.remove('drag-armed');
+      startDrag(row, e);
+    }, 450);
+  });
+
+  container.addEventListener('pointermove', (e)=>{
+    if(longPressTimer && (Math.abs(e.clientX-startX) > 8 || Math.abs(e.clientY-startY) > 8)){
+      clearTimeout(longPressTimer); longPressTimer = null;
+      const armed = container.querySelector('.drag-armed');
+      if(armed) armed.classList.remove('drag-armed');
+    }
+    if(dragEl && e.pointerId===pointerId) onDragMove(e);
+  });
+
+  function finish(){
+    if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+    const armed = container.querySelector('.drag-armed');
+    if(armed) armed.classList.remove('drag-armed');
+    if(dragEl) endDrag();
+  }
+  container.addEventListener('pointerup', finish);
+  container.addEventListener('pointercancel', finish);
+
+  function startDrag(row, e){
+    dragEl = row;
+    try{ row.setPointerCapture(e.pointerId); }catch(err){}
+    row.classList.add('dragging');
+    if(navigator.vibrate) navigator.vibrate(15);
+  }
+
+  function onDragMove(e){
+    e.preventDefault();
+    const rows = [...container.querySelectorAll(rowSelector)].filter(r=>r!==dragEl);
+    const y = e.clientY;
+    let placed = false;
+    for(const r of rows){
+      const rect = r.getBoundingClientRect();
+      if(y < rect.top + rect.height/2){
+        container.insertBefore(dragEl, r);
+        placed = true;
+        break;
+      }
+    }
+    if(!placed) container.appendChild(dragEl);
+  }
+
+  function endDrag(){
+    dragEl.classList.remove('dragging');
+    const idsInOrder = [...container.querySelectorAll(rowSelector)]
+      .map(r=>r.querySelector('[data-id]'))
+      .filter(Boolean)
+      .map(el=>el.dataset.id);
+    const items = getItems();
+    const seen = new Set();
+    const reordered = [];
+    idsInOrder.forEach(id=>{
+      const item = items.find(it=>it.id===id);
+      if(item && !seen.has(id)){ reordered.push(item); seen.add(id); }
+    });
+    items.forEach(it=>{ if(!seen.has(it.id)) reordered.push(it); }); // safety net
+    applyOrder(reordered);
+    dragEl = null;
+    pointerId = null;
+  }
+}
+
+enableReorder(
+  document.getElementById('cardsList'), '.card-row',
+  ()=>state.cards,
+  (reordered)=>{
+    reordered.forEach((c,i)=>{ c.sortIndex = i; });
+    state.cards = reordered;
+    pushHistory();
+    scheduleSave();
+    renderCards();
+  }
+);
+enableReorder(
+  document.getElementById('expList'), '.row',
+  ()=>state.expenseItems,
+  (reordered)=>{
+    reordered.forEach((it,i)=>{ it.sortIndex = i; });
+    state.expenseItems = reordered;
+    pushHistory();
+    scheduleSave();
+    renderExpenses();
+  }
+);
+
 // ---- events ----
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=>{
@@ -1300,8 +1430,12 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
 // iOS Safari doesn't reliably handle direct data-URI downloads (especially
 // for large images), so instead we open a new tab with the image — the
 // person can then long-press it and choose "Save Image" to add it to Photos.
+// Captures the real page header (title) plus the tab's content as two
+// separate canvases and stacks them, so the export covers everything from
+// the top header down through the last list item.
 async function exportAsImage(captureElId, filenamePrefix){
   const el = document.getElementById(captureElId);
+  const headerEl = document.querySelector('header.top');
   if(!el || typeof html2canvas === 'undefined'){
     alert('ไม่สามารถสร้างรูปภาพได้ในขณะนี้ ลองใหม่อีกครั้ง');
     return;
@@ -1310,12 +1444,29 @@ async function exportAsImage(captureElId, filenamePrefix){
   // popup blocker allows it — we fill it in once the image is ready below.
   const previewWin = window.open('', '_blank');
   try{
-    const canvas = await html2canvas(el, {
-      backgroundColor: '#FAF6ED',
-      scale: 2,
-      useCORS: true
-    });
-    canvas.toBlob((blob)=>{
+    const bg = (getComputedStyle(document.documentElement).getPropertyValue('--paper') || '#FAF6ED').trim();
+    const opts = { backgroundColor: bg, scale: 2, useCORS: true };
+
+    const contentCanvas = await html2canvas(el, opts);
+    let combined = contentCanvas;
+
+    if(headerEl){
+      const headerCanvas = await html2canvas(headerEl, opts);
+      const gap = 20;
+      const width = Math.max(headerCanvas.width, contentCanvas.width);
+      const totalHeight = headerCanvas.height + gap + contentCanvas.height;
+
+      combined = document.createElement('canvas');
+      combined.width = width;
+      combined.height = totalHeight;
+      const ctx = combined.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, totalHeight);
+      ctx.drawImage(headerCanvas, 0, 0);
+      ctx.drawImage(contentCanvas, 0, headerCanvas.height + gap);
+    }
+
+    combined.toBlob((blob)=>{
       if(!blob){
         if(previewWin) previewWin.close();
         alert('สร้างรูปภาพไม่สำเร็จ ลองใหม่อีกครั้ง');
@@ -1351,8 +1502,8 @@ document.getElementById('exportSummary').addEventListener('click', ()=>{
   exportAsImage('summaryCapture', 'สรุป-' + sumView + '-' + stamp);
 });
 
-document.getElementById('addCard').addEventListener('click', ()=>{
-  const c = {id:uid(), name:'บัตร/บิลใหม่', cycle:null, pay:null, note:''};
+function addNewCard(){
+  const c = {id:uid(), name:'บัตร/บิลใหม่', cycle:null, pay:null, note:'', sortIndex:Date.now()};
   state.cards.push(c);
   ensureMonth(state, curKey);
   state.cardMonthly[curKey][c.id] = {amount:0, paid:false};
@@ -1360,10 +1511,10 @@ document.getElementById('addCard').addEventListener('click', ()=>{
   scheduleSave();
   renderCards();
   const input = document.querySelector(`.row-name[data-id="${c.id}"]`);
-  if(input){ input.focus(); input.select(); }
-});
-document.getElementById('addExp').addEventListener('click', ()=>{
-  const it = {id:uid(), name:'รายการใหม่'};
+  if(input){ input.focus(); input.select(); input.scrollIntoView({behavior:'smooth', block:'center'}); }
+}
+function addNewExpense(){
+  const it = {id:uid(), name:'รายการใหม่', sortIndex:Date.now()};
   state.expenseItems.push(it);
   ensureMonth(state, curKey);
   state.expenseMonthly[curKey][it.id] = {amount:0, paid:false};
@@ -1371,8 +1522,12 @@ document.getElementById('addExp').addEventListener('click', ()=>{
   scheduleSave();
   renderExpenses();
   const input = document.querySelector(`.row-name[data-id="${it.id}"]`);
-  if(input){ input.focus(); input.select(); }
-});
+  if(input){ input.focus(); input.select(); input.scrollIntoView({behavior:'smooth', block:'center'}); }
+}
+document.getElementById('addCard').addEventListener('click', addNewCard);
+document.getElementById('addCardTop').addEventListener('click', addNewCard);
+document.getElementById('addExp').addEventListener('click', addNewExpense);
+document.getElementById('addExpTop').addEventListener('click', addNewExpense);
 
 document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
@@ -1383,9 +1538,21 @@ document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
   renderCards();
 });
 document.getElementById('clearExpMonth').addEventListener('click', ()=>{
-  if(!confirm('ล้างยอดและสถานะจ่ายของค่าใช้จ่ายทั้งหมดในเดือนนี้?')) return;
-  state.expenseMonthly[curKey] = {};
-  state.expenseItems.forEach(it=>{ state.expenseMonthly[curKey][it.id]={amount:0,paid:false}; });
+  if(!confirm('ล้างยอดเงินทั้งหมดในเดือนนี้ (สถานะจ่ายแล้วจะยังคงอยู่)?')) return;
+  state.expenseItems.forEach(it=>{
+    const rec = state.expenseMonthly[curKey][it.id];
+    if(rec) rec.amount = 0;
+  });
+  pushHistory();
+  scheduleSave();
+  renderExpenses();
+});
+document.getElementById('clearExpPaidOnly').addEventListener('click', ()=>{
+  if(!confirm('ล้างสถานะ "จ่ายแล้ว" ทั้งหมดในเดือนนี้ (ยอดเงินจะยังคงอยู่)?')) return;
+  state.expenseItems.forEach(it=>{
+    const rec = state.expenseMonthly[curKey][it.id];
+    if(rec) rec.paid = false;
+  });
   pushHistory();
   scheduleSave();
   renderExpenses();
