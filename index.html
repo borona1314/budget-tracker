@@ -1772,6 +1772,8 @@ document.body.addEventListener('change', (e)=>{
     const id = t.dataset.id, kind = t.dataset.kind;
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec) rec.paidDate = t.value || null;
+    const span = t.nextElementSibling;
+    if(span) span.textContent = formatPaidDate(rec.paidDate);
     pushHistory();
     scheduleSave();
   }
