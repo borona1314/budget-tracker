@@ -874,6 +874,13 @@ function isTodayPayDate(pay, key){
   const today = new Date();
   return y===today.getFullYear() && (m-1)===today.getMonth() && pay===today.getDate();
 }
+function formatPaidDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return '';
+  const THAI_MONTHS_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
+}
 
 function renderCards(){
   ensureMonth(state, curKey);
@@ -893,11 +900,11 @@ function renderCards(){
     total += Number(rec.amount)||0;
     const isFirstOfDay = c.pay !== lastPay;
     lastPay = c.pay;
-    const isToday = isTodayPayDate(c.pay, curKey);
-    const isPast = !isToday && isPastPayDate(c.pay, curKey);
+    const isToday = !rec.paid && isTodayPayDate(c.pay, curKey);
+    const isPast = !rec.paid && !isToday && isPastPayDate(c.pay, curKey);
 
     const row = document.createElement('div');
-    row.className = 'row card-row';
+    row.className = 'row card-row' + (rec.paid ? ' is-paid' : '');
     if(isFirstOfDay) row.id = c.pay==null ? 'day-none' : 'day-'+c.pay;
     row.innerHTML = `
       <div class="date-badge${isToday?' today':''}${isPast?' passed':''}">
@@ -926,6 +933,10 @@ function renderCards(){
           <div class="amount-wrap"><span class="cur">฿</span>
             <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${toDisplayAmount(rec.amount)}" placeholder="0">
           </div>
+          <label class="paidbox">
+            <input type="checkbox" data-id="${c.id}" data-f="paid" data-kind="card" ${rec.paid?'checked':''}>
+            จ่ายแล้ว${rec.paid && rec.paidDate ? ' · '+formatPaidDate(rec.paidDate) : ''}
+          </label>
         </div>
       </div>
     `;
@@ -1230,7 +1241,12 @@ function checkAlertBanner(){
   const todayKey = monthKey(today);
   const messages = [];
 
-  const dueSoon = state.cards.filter(c=>c.pay===todayNum || c.pay===tomorrowNum);
+  const todayCardM = state.cardMonthly[todayKey] || {};
+  const dueSoon = state.cards.filter(c=>{
+    if(c.pay!==todayNum && c.pay!==tomorrowNum) return false;
+    const rec = todayCardM[c.id];
+    return !(rec && rec.paid); // skip bills already marked paid
+  });
   if(dueSoon.length>0){
     const names = dueSoon.slice(0,3).map(c=>escapeHtml(c.name)).join(', ');
     messages.push(`🔔 มีบิลใกล้ครบกำหนด: ${names}${dueSoon.length>3?' และอื่นๆ':''}`);
@@ -1252,7 +1268,9 @@ function exportCsv(){
     state.cards.forEach(c=>{
       const rec = state.cardMonthly[key][c.id];
       if(!rec) return;
-      rows.push(['บัตร/บิล', key, c.name, rec.amount||0, c.note||'']);
+      const status = rec.paid ? `จ่ายแล้ว${rec.paidDate ? ' ('+rec.paidDate+')' : ''}` : 'ยังไม่จ่าย';
+      const note = [c.note, status].filter(Boolean).join(' — ');
+      rows.push(['บัตร/บิล', key, c.name, rec.amount||0, note]);
     });
   });
   Object.keys(state.expenseMonthly).sort().forEach(key=>{
@@ -1732,7 +1750,12 @@ document.body.addEventListener('change', (e)=>{
   if(t.type==='checkbox' && t.dataset.f==='paid'){
     const id = t.dataset.id, kind = t.dataset.kind;
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
-    if(rec){ rec.paid = t.checked; }
+    if(rec){
+      rec.paid = t.checked;
+      if(kind==='card'){
+        rec.paidDate = t.checked ? new Date().toISOString().slice(0,10) : null;
+      }
+    }
     pushHistory();
     scheduleSave();
     if(kind==='card') renderCards(); else renderExpenses();
