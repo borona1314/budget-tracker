@@ -135,6 +135,10 @@
     white-space:nowrap;cursor:pointer;
   }
   label.paidbox input{width:15px;height:15px;accent-color:var(--paid);}
+  .paid-date-input{font-size:10.5px;color:transparent;background:transparent;border:none;font-family:inherit;position:relative;}
+  .paid-date-wrap{position:relative;display:inline-block;}
+  .paid-date-wrap span{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;font-size:10.5px;color:var(--ink-soft);pointer-events:none;}
+  .paid-row{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:6px;}
 
   .add-row{
     margin-top:10px;width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--rule);
@@ -879,7 +883,7 @@ function formatPaidDate(dateStr){
   const d = new Date(dateStr);
   if(isNaN(d.getTime())) return '';
   const THAI_MONTHS_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
+  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
 function renderCards(){
@@ -933,10 +937,13 @@ function renderCards(){
           <div class="amount-wrap"><span class="cur">฿</span>
             <input class="amount-input" inputmode="decimal" data-id="${c.id}" data-f="amount" data-kind="card" value="${toDisplayAmount(rec.amount)}" placeholder="0">
           </div>
-          <label class="paidbox">
-            <input type="checkbox" data-id="${c.id}" data-f="paid" data-kind="card" ${rec.paid?'checked':''}>
-            จ่ายแล้ว${rec.paid && rec.paidDate ? ' · '+formatPaidDate(rec.paidDate) : ''}
-          </label>
+          <div class="paid-row">
+            ${rec.paid?`<span class="paid-date-wrap"><input type="date" class="paid-date-input" data-id="${c.id}" data-kind="card" value="${rec.paidDate||''}"><span>${formatPaidDate(rec.paidDate)}</span></span>`:'<span></span>'}
+            <label class="paidbox">
+              <input type="checkbox" data-id="${c.id}" data-f="paid" data-kind="card" ${rec.paid?'checked':''}>
+              จ่ายแล้ว
+            </label>
+          </div>
         </div>
       </div>
     `;
@@ -972,7 +979,10 @@ function renderExpenses(){
         <div class="amount-wrap"><span class="cur">฿</span>
           <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${toDisplayAmount(rec.amount)}" placeholder="0">
         </div>
-        <label class="paidbox"><input type="checkbox" data-id="${it.id}" data-f="paid" data-kind="exp" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
+        <div class="paid-row">
+          ${rec.paid?`<span class="paid-date-wrap"><input type="date" class="paid-date-input" data-id="${it.id}" data-kind="exp" value="${rec.paidDate||''}"><span>${formatPaidDate(rec.paidDate)}</span></span>`:'<span></span>'}
+          <label class="paidbox"><input type="checkbox" data-id="${it.id}" data-f="paid" data-kind="exp" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
+        </div>
       </div>
     `;
     list.appendChild(row);
@@ -1752,13 +1762,18 @@ document.body.addEventListener('change', (e)=>{
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){
       rec.paid = t.checked;
-      if(kind==='card'){
-        rec.paidDate = t.checked ? new Date().toISOString().slice(0,10) : null;
-      }
+      rec.paidDate = t.checked ? new Date().toISOString().slice(0,10) : null;
     }
     pushHistory();
     scheduleSave();
     if(kind==='card') renderCards(); else renderExpenses();
+  }
+  if(t.classList.contains('paid-date-input')){
+    const id = t.dataset.id, kind = t.dataset.kind;
+    const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
+    if(rec) rec.paidDate = t.value || null;
+    pushHistory();
+    scheduleSave();
   }
 });
 
