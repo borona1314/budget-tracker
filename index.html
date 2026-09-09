@@ -365,6 +365,64 @@
   }
   html[data-theme="dark"] .date-badge .box{background:var(--paper-deep);}
 
+  /* Cat theme overrides */
+  html[data-theme="cat"]{
+    --paper:#FFF8F0; --paper-deep:#FFEEDD; --rule:#F5D9B8; --ink:#5C3A21;
+    --ink-soft:#8B6544; --ink-faint:#C4A183; --stamp:#E8804D; --stamp-soft:#FDE4D3;
+    --paid:#7BAE7F; --paid-soft:#E3F0E4; --card-bg:#FFFBF7;
+  }
+
+  /* LINE theme overrides */
+  html[data-theme="line"]{
+    --paper:#F5F5F5; --paper-deep:#E8E8E8; --rule:#D9D9D9; --ink:#1E1E1E;
+    --ink-soft:#6D6D6D; --ink-faint:#A0A0A0; --stamp:#06C755; --stamp-soft:#DFF7E7;
+    --paid:#06C755; --paid-soft:#DFF7E7; --card-bg:#FFFFFF;
+  }
+  html[data-theme="line"] header.top{
+    background:#06C755;margin:-18px -16px 14px;padding:18px 16px 14px;
+    border-radius:0 0 16px 16px;
+  }
+  html[data-theme="line"] header.top h1, html[data-theme="line"] header.top .sub{color:#fff;}
+  html[data-theme="line"] .top-controls button{
+    background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3);color:#fff;
+  }
+  html[data-theme="line"] .tabs{background:#06C755;}
+  html[data-theme="line"] .tab, html[data-theme="line"] .subtab{color:rgba(255,255,255,.75);}
+  html[data-theme="line"] .tab.active, html[data-theme="line"] .subtab.active{
+    background:#fff;color:#06C755;box-shadow:none;
+  }
+  html[data-theme="line"] .row, html[data-theme="line"] .card-row,
+  html[data-theme="line"] .hero-bar, html[data-theme="line"] .stamp,
+  html[data-theme="line"] .cal-wrap, html[data-theme="line"] .sum-item{
+    border-radius:18px;border-color:var(--rule);
+  }
+  html[data-theme="line"] .add-row{
+    border-radius:999px;border-color:#06C755;color:#06C755;font-weight:700;
+  }
+  html[data-theme="line"] .hero-bar{border-width:0;box-shadow:var(--shadow);}
+
+  /* Earth-tone themes */
+  html[data-theme="terracotta"]{
+    --paper:#FBF3EC; --paper-deep:#F3E3D6; --rule:#E3C7AE; --ink:#5A3825;
+    --ink-soft:#8C6248; --ink-faint:#BFA189; --stamp:#C1502E; --stamp-soft:#F3D9CC;
+    --paid:#7A8B5C; --paid-soft:#E4E9D9; --card-bg:#FFFFFF;
+  }
+  html[data-theme="sage"]{
+    --paper:#F3F4EC; --paper-deep:#E7E9D8; --rule:#CDD1B4; --ink:#3F4A34;
+    --ink-soft:#6B7859; --ink-faint:#9CA688; --stamp:#6B7F52; --stamp-soft:#DCE3CB;
+    --paid:#8A9A6E; --paid-soft:#E5EADA; --card-bg:#FFFFFF;
+  }
+  html[data-theme="sand"]{
+    --paper:#FAF3E4; --paper-deep:#F0E4C9; --rule:#DCC79E; --ink:#5B4A2F;
+    --ink-soft:#8A7350; --ink-faint:#BFA97D; --stamp:#C08A3E; --stamp-soft:#F0DCB4;
+    --paid:#7E9678; --paid-soft:#E3EBDD; --card-bg:#FFFDF7;
+  }
+  html[data-theme="forest"]{
+    --paper:#F1F0E8; --paper-deep:#E3E1D0; --rule:#C7C4A9; --ink:#2E3A26;
+    --ink-soft:#556B47; --ink-faint:#8A9A76; --stamp:#3F5C34; --stamp-soft:#D5E0CC;
+    --paid:#A67C4A; --paid-soft:#EDE0CE; --card-bg:#FFFFFF;
+  }
+
   .row.dragging, .card-row.dragging{
     opacity:.85;box-shadow:0 10px 24px rgba(0,0,0,.25);position:relative;z-index:50;
     touch-action:none;
@@ -395,7 +453,7 @@
 
   <header class="top">
     <div>
-      <h1>📒 สมุดบัญชีค่าใช้จ่าย</h1>
+      <h1>📒🐱 สมุดบัญชีค่าใช้จ่าย</h1>
       <div class="sub">บัตร/บิล · ค่าใช้จ่ายรายเดือน · ผ่อน · สรุปภาพรวม</div>
     </div>
     <div class="top-controls">
@@ -501,7 +559,7 @@
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
   <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
 </div>
-<div class="save-flash" id="saveFlash">บันทึกแล้ว</div>
+<div class="save-flash" id="saveFlash">🐾 บันทึกแล้ว</div>
 
 <div class="cat-modal-backdrop" id="catModalBackdrop" style="display:none;"></div>
 <div class="cat-modal" id="catModal" style="display:none;">
@@ -1080,7 +1138,7 @@ function renderInstallments(){
   ].filter(x=>x.item.installment);
 
   if(all.length===0){
-    list.innerHTML = '<div class="sum-empty">ยังไม่มีรายการที่ตั้งผ่อนไว้ 🌱</div>';
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีรายการที่ตั้งผ่อนไว้ 🐱</div>';
     document.getElementById('instTotalRemainV').textContent = fmt(0);
     return;
   }
@@ -1139,7 +1197,7 @@ function renderSummary(){
   const sortedKeys = [...keys].filter(k => k <= todayKey).sort();
 
   if(sortedKeys.length===0){
-    list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลให้สรุป 🌱</div>';
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลให้สรุป 🐾</div>';
     return;
   }
 
@@ -1838,12 +1896,15 @@ document.getElementById('catModalInput').addEventListener('keydown', (e)=>{
 // ---- theme toggle (dark/light), persisted per device ----
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('themeToggleBtn').textContent = theme==='dark' ? '☀️' : '🌙';
+  const icons = { light:'🌙', dark:'🐱', cat:'💬', line:'🏺', terracotta:'🌿', sage:'🏜️', sand:'🌲', forest:'☀️' };
+  document.getElementById('themeToggleBtn').textContent = icons[theme] || '🌙';
   localStorage.setItem('budgetTheme', theme);
 }
 document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+  const order = ['light','dark','cat','line','terracotta','sage','sand','forest'];
   const current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current==='dark' ? 'light' : 'dark');
+  const next = order[(order.indexOf(current)+1) % order.length];
+  applyTheme(next);
 });
 
 // ---- search ----
