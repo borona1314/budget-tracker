@@ -41,7 +41,7 @@
     min-height:100vh;
     padding-bottom:60px;
   }
-  .wrap{max-width:640px;margin:0 auto;padding:18px 16px 40px;}
+  .wrap{max-width:640px;margin:0 auto;padding:18px 16px 88px;}
 
   header.top{
     display:flex;align-items:baseline;justify-content:space-between;
@@ -62,6 +62,25 @@
     color:var(--ink-soft);cursor:pointer;user-select:none;transition:background .15s,color .15s;
   }
   .tab.active{background:var(--card-bg);color:var(--ink);box-shadow:var(--shadow);}
+
+  .bottom-nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;max-width:640px;margin:0 auto;
+    display:flex;align-items:flex-end;justify-content:space-around;
+    background:var(--card-bg);border-top:1px solid var(--rule);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav .tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+    font-size:10px;color:var(--ink-faint);cursor:pointer;padding:5px 2px;
+    background:none;border-radius:0;font-weight:600;box-shadow:none;
+  }
+  .bottom-nav .tab.active{color:var(--stamp);background:none;box-shadow:none;}
+  .bottom-nav .tab .ic{font-size:19px;}
+  .fab-add{
+    width:50px;height:50px;border-radius:50%;background:var(--stamp);color:#fff;
+    font-size:26px;border:none;box-shadow:0 4px 14px rgba(0,0,0,.25);
+    margin-top:-22px;flex:0 0 auto;cursor:pointer;line-height:1;
+  }
 
   .month-bar{
     display:flex;align-items:center;justify-content:space-between;
@@ -387,10 +406,11 @@
     background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3);color:#fff;
   }
   html[data-theme="line"] .tabs{background:#06C755;}
-  html[data-theme="line"] .tab, html[data-theme="line"] .subtab{color:rgba(255,255,255,.75);}
-  html[data-theme="line"] .tab.active, html[data-theme="line"] .subtab.active{
+  html[data-theme="line"] .tabs .tab, html[data-theme="line"] .subtab{color:rgba(255,255,255,.75);}
+  html[data-theme="line"] .tabs .tab.active, html[data-theme="line"] .subtab.active{
     background:#fff;color:#06C755;box-shadow:none;
   }
+  html[data-theme="line"] .bottom-nav .tab.active{color:#06C755;}
   html[data-theme="line"] .row, html[data-theme="line"] .card-row,
   html[data-theme="line"] .hero-bar, html[data-theme="line"] .stamp,
   html[data-theme="line"] .cal-wrap, html[data-theme="line"] .sum-item{
@@ -469,13 +489,6 @@
     <button id="searchClearBtn">✕</button>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="cards">💳 บัตร/บิล</div>
-    <div class="tab" data-tab="expenses">🧾 ค่าใช้จ่าย</div>
-    <div class="tab" data-tab="installments">📆 ผ่อน</div>
-    <div class="tab" data-tab="summary">📊 สรุป</div>
-  </div>
-
   <div class="month-bar" id="monthBar">
     <button id="prevMonth">‹</button>
     <div class="label" id="monthLabel">📅 -</div>
@@ -548,6 +561,7 @@
       <div class="subtab active" data-sum="month">🗓️ รายเดือน</div>
       <div class="subtab" data-sum="year">📆 รายปี</div>
       <div class="subtab" data-sum="category">🏷️ หมวดหมู่</div>
+      <div class="subtab" data-sum="insights">💡 วิเคราะห์</div>
     </div>
     <div id="summaryCapture">
       <div class="list" id="summaryList"></div>
@@ -558,7 +572,16 @@
 
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
   <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
+  <div class="footer-note" style="margin-top:6px;"><button id="notifSettingsBtn">🔔 เปิดการแจ้งเตือนบิลค้างจ่าย</button></div>
 </div>
+
+<nav class="bottom-nav">
+  <div class="tab active" data-tab="cards"><span class="ic">💳</span><span>บัตร/บิล</span></div>
+  <div class="tab" data-tab="expenses"><span class="ic">🧾</span><span>ค่าใช้จ่าย</span></div>
+  <button class="fab-add" id="fabAdd" title="เพิ่มรายการใหม่">+</button>
+  <div class="tab" data-tab="installments"><span class="ic">📆</span><span>ผ่อน</span></div>
+  <div class="tab" data-tab="summary"><span class="ic">📊</span><span>สรุป</span></div>
+</nav>
 <div class="save-flash" id="saveFlash">🐾 บันทึกแล้ว</div>
 
 <div class="cat-modal-backdrop" id="catModalBackdrop" style="display:none;"></div>
@@ -1127,6 +1150,74 @@ function renderCategorySummary(list, todayKey){
   });
 }
 
+function renderInsights(list, todayKey){
+  const t = monthTotals(todayKey);
+  const prevKey = prevMonthKeyOf(todayKey);
+  const tPrev = monthTotals(prevKey);
+  const hasPrev = (state.expenseMonthly[prevKey] && Object.keys(state.expenseMonthly[prevKey]).length>0) || state.income[prevKey]!==undefined;
+  const net = t.income - t.outTotal;
+  const cards = [];
+
+  cards.push({
+    title: '📅 ' + monthLabelFromKey(todayKey),
+    body: `รายรับ ${fmt(t.income)} · ใช้จ่าย ${fmt(t.outTotal)} · ${net>=0?'เหลือ':'ติดลบ'} ${fmt(Math.abs(net))}`
+  });
+
+  if(hasPrev && tPrev.outTotal>0){
+    const diff = t.outTotal - tPrev.outTotal;
+    const pct = Math.round((diff/tPrev.outTotal)*100);
+    let msg;
+    if(pct > 10) msg = `⚠️ เดือนนี้ใช้จ่ายเพิ่มขึ้น ${pct}% จากเดือนที่แล้ว (${fmt(tPrev.outTotal)} → ${fmt(t.outTotal)})`;
+    else if(pct < -10) msg = `✅ เดือนนี้ใช้จ่ายลดลง ${Math.abs(pct)}% จากเดือนที่แล้ว เยี่ยมมาก!`;
+    else msg = `ใช้จ่ายใกล้เคียงเดือนที่แล้ว (${pct>=0?'+':''}${pct}%)`;
+    cards.push({ title:'📈 แนวโน้มค่าใช้จ่าย', body: msg });
+  }
+
+  if(t.income>0){
+    const rate = Math.round((net/t.income)*100);
+    let msg;
+    if(rate < 0) msg = `กำลังใช้เงินเกินรายรับอยู่ ${Math.abs(rate)}% ลองดูรายการที่ตัดได้ก่อน`;
+    else if(rate < 10) msg = `เก็บออมได้ ${rate}% ของรายรับ — ลองตั้งเป้าอย่างน้อย 10-20% ดูไหม`;
+    else if(rate < 20) msg = `เก็บออมได้ ${rate}% ของรายรับ อยู่ในเกณฑ์ดี`;
+    else msg = `เก็บออมได้ถึง ${rate}% ของรายรับ ทำได้ดีมาก! 🎉`;
+    cards.push({ title:'💰 อัตราการออม', body: msg });
+  }
+
+  const expM = state.expenseMonthly[todayKey] || {};
+  const byCat = {};
+  state.expenseItems.forEach(it=>{
+    const rec = expM[it.id];
+    const amt = rec ? Number(rec.amount)||0 : 0;
+    if(amt<=0) return;
+    const cat = it.category || 'ไม่ระบุหมวดหมู่';
+    byCat[cat] = (byCat[cat]||0) + amt;
+  });
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  if(catEntries.length>0){
+    const [topCat, topVal] = catEntries[0];
+    const share = t.outTotal>0 ? Math.round((topVal/t.outTotal)*100) : 0;
+    let msg = `"${topCat}" ใช้เงินไปมากสุด ${fmt(topVal)} (${share}% ของค่าใช้จ่ายทั้งหมด)`;
+    if(share>=40) msg += ' — ลองดูว่ามีอะไรลดได้ในหมวดนี้บ้าง';
+    cards.push({ title:'🏷️ หมวดหมู่ที่ใช้เงินเยอะสุด', body: msg });
+  }
+
+  if(t.cardTotal>0){
+    cards.push({ title:'💳 บิล/บัตรเดือนนี้', body: `มีบิลและบัตรรวม ${fmt(t.cardTotal)} ที่ต้องจ่าย (แยกจากยอดค่าใช้จ่ายด้านบน)` });
+  }
+
+  if(cards.length===0){
+    list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลพอให้วิเคราะห์ 💡</div>';
+    return;
+  }
+  cards.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'sum-item';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `<div class="sum-item-top"><span class="label">${c.title}</span></div><div class="sum-item-bottom" style="font-size:12.5px;color:var(--ink);">${c.body}</div>`;
+    list.appendChild(row);
+  });
+}
+
 function renderInstallments(){
   const list = document.getElementById('instList');
   if(!list) return; // not rendered yet at very first load
@@ -1183,6 +1274,10 @@ function renderSummary(){
 
   if(sumView==='category'){
     renderCategorySummary(list, todayKey);
+    return;
+  }
+  if(sumView==='insights'){
+    renderInsights(list, todayKey);
     return;
   }
 
@@ -1328,6 +1423,7 @@ function checkAlertBanner(){
   if(messages.length===0){ banner.style.display='none'; return; }
   textEl.innerHTML = messages.join('<br>');
   banner.style.display = 'flex';
+  maybeShowBrowserNotification(messages);
 }
 
 function exportCsv(){
@@ -1614,6 +1710,10 @@ document.getElementById('addCard').addEventListener('click', addNewCard);
 document.getElementById('addCardTop').addEventListener('click', addNewCard);
 document.getElementById('addExp').addEventListener('click', addNewExpense);
 document.getElementById('addExpTop').addEventListener('click', addNewExpense);
+document.getElementById('fabAdd').addEventListener('click', ()=>{
+  if(activeTab==='cards') addNewCard();
+  else addNewExpense();
+});
 
 document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
@@ -2020,6 +2120,41 @@ document.getElementById('pinSettingsBtn').addEventListener('click', ()=>{
     if(!newPin || !newPin.trim()) return;
     localStorage.setItem('budgetPin', newPin.trim());
     alert('ตั้งรหัสผ่านเรียบร้อยแล้ว ครั้งหน้าที่เปิดแอปบนเครื่องนี้จะต้องใส่รหัสผ่านนี้ก่อนเข้าใช้งาน');
+  }
+});
+
+// ---- browser notifications (via service worker, works on iOS 16.4+ home-screen apps) ----
+async function registerNotifSW(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{ return await navigator.serviceWorker.register('sw.js'); }
+  catch(e){ console.error('sw register failed', e); return null; }
+}
+function maybeShowBrowserNotification(messages){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const todayStr = new Date().toDateString();
+  if(localStorage.getItem('notifLastShown') === todayStr) return;
+  localStorage.setItem('notifLastShown', todayStr);
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready.then(reg=>{
+    reg.showNotification('📒 สมุดบัญชีค่าใช้จ่าย', {
+      body: messages.join(' • ').replace(/<[^>]+>/g,''),
+      tag: 'budget-alert'
+    });
+  }).catch(()=>{});
+}
+document.getElementById('notifSettingsBtn').addEventListener('click', async ()=>{
+  if(!('Notification' in window)){ alert('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน'); return; }
+  if(Notification.permission === 'granted'){
+    alert('เปิดการแจ้งเตือนอยู่แล้ว — จะแจ้งเตือนอัตโนมัติเมื่อมีบิลใกล้ครบกำหนดหรือใช้จ่ายเกินงบ (วันละ 1 ครั้ง)');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if(perm==='granted'){
+    await registerNotifSW();
+    alert('เปิดการแจ้งเตือนเรียบร้อย! หมายเหตุ: บน iPhone/iPad ต้องเปิดแอปนี้จากไอคอนหน้าจอโฮม (ไม่ใช่ Safari ธรรมดา) การแจ้งเตือนถึงจะทำงาน');
+    checkAlertBanner();
+  }else{
+    alert('ไม่ได้รับอนุญาตให้แจ้งเตือน ลองเปิดใหม่ได้จากการตั้งค่าเบราว์เซอร์');
   }
 });
 
