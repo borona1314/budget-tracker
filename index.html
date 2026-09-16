@@ -522,7 +522,8 @@
     <div class="qa-emoji">💸</div>
     <div class="qa-title">บันทึกด่วน</div>
     <div class="qa-amount-wrap"><span>฿</span><input id="qaAmount" type="number" inputmode="decimal" placeholder="0"></div>
-    <input id="qaName" class="qa-name" type="text" placeholder="ชื่อรายการ (เช่น กาแฟ, ข้าว)">
+    <input id="qaChannel" class="qa-name" type="text" list="qaChannelList" placeholder="ช่องทาง (เช่น Lazada, Shopee, เงินสด)">
+    <datalist id="qaChannelList"></datalist>
     <button id="qaSave">บันทึก</button>
     <div id="qaConfirm" class="qa-confirm">✅ บันทึกแล้ว!</div>
     <a class="qa-open-app" href="./">เปิดแอปแบบเต็ม</a>
@@ -626,6 +627,7 @@
       <div class="subtab active" data-sum="month">🗓️ รายเดือน</div>
       <div class="subtab" data-sum="year">📆 รายปี</div>
       <div class="subtab" data-sum="category">🏷️ หมวดหมู่</div>
+      <div class="subtab" data-sum="channel">💳 ช่องทาง</div>
       <div class="subtab" data-sum="insights">💡 วิเคราะห์</div>
     </div>
     <div id="summaryCapture">
@@ -638,6 +640,7 @@
   <div class="footer-note" style="margin-top:30px;">ข้อมูลถูกบันทึกไว้ในเครื่อง/บัญชีนี้โดยอัตโนมัติ</div>
   <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
   <div class="footer-note" style="margin-top:6px;"><button id="notifSettingsBtn">🔔 เปิดการแจ้งเตือนบิลค้างจ่าย</button></div>
+  <div class="footer-note" style="margin-top:6px;"><a href="?quickadd=1" style="color:var(--stamp);font-weight:700;">⚡ เปิดหน้าบันทึกด่วน (กดเพิ่มหน้าจอโฮมจากตรงนี้ได้เลย)</a></div>
 </div>
 
 <nav class="bottom-nav">
@@ -651,7 +654,7 @@
 
 <div class="cat-modal-backdrop" id="catModalBackdrop" style="display:none;"></div>
 <div class="cat-modal" id="catModal" style="display:none;">
-  <div class="cat-modal-title">เลือกหมวดหมู่</div>
+  <div class="cat-modal-title" id="catModalTitle">เลือกหมวดหมู่</div>
   <div class="cat-pill-list" id="catModalList"></div>
   <div class="cat-modal-add">
     <input id="catModalInput" placeholder="เพิ่มหมวดหมู่ใหม่...">
@@ -696,33 +699,47 @@ function categoryLabel(it){
   if(!it.category) return '+ หมวดหมู่';
   return '🏷️ ' + it.category;
 }
+function channelLabel(it, rec){
+  if(!it.channel) return '+ ช่องทาง';
+  let label = '💳 ' + it.channel;
+  if(rec && rec.lastRecorded){
+    label += ' · ล่าสุด ' + formatPaidDate(rec.lastRecorded.slice(0,10));
+  }
+  return label;
+}
 
-let categoryPickerTargetId = null;
-function getAllKnownCategories(){
+let pickerTargetId = null;
+let pickerField = null;
+const PICKER_TITLES = { category:'เลือกหมวดหมู่', channel:'เลือกช่องทางที่ใช้จ่าย' };
+const PICKER_EMPTY = { category:'ไม่ระบุหมวดหมู่', channel:'ไม่ระบุช่องทาง' };
+function getAllKnownValues(field){
   const set = new Set();
-  state.expenseItems.forEach(it=>{ if(it.category) set.add(it.category); });
+  state.expenseItems.forEach(it=>{ if(it[field]) set.add(it[field]); });
   return [...set].sort();
 }
-function openCategoryPicker(itemId){
-  categoryPickerTargetId = itemId;
+function openFieldPicker(itemId, field){
+  pickerTargetId = itemId;
+  pickerField = field;
   const item = state.expenseItems.find(x=>x.id===itemId);
   if(!item) return;
+  document.getElementById('catModalTitle').textContent = PICKER_TITLES[field] || 'เลือกค่า';
+  document.getElementById('catModalClear').textContent = PICKER_EMPTY[field] || 'ไม่ระบุ';
   const listEl = document.getElementById('catModalList');
   listEl.innerHTML = '';
-  const cats = getAllKnownCategories();
-  if(cats.length===0){
+  const vals = getAllKnownValues(field);
+  if(vals.length===0){
     const empty = document.createElement('div');
     empty.style.fontSize = '12px';
     empty.style.color = 'var(--ink-faint)';
-    empty.textContent = 'ยังไม่มีหมวดหมู่ในระบบ พิมพ์เพิ่มด้านล่างได้เลย';
+    empty.textContent = 'ยังไม่มีข้อมูลนี้ในระบบ พิมพ์เพิ่มด้านล่างได้เลย';
     listEl.appendChild(empty);
   }
-  cats.forEach(cat=>{
+  vals.forEach(val=>{
     const chip = document.createElement('span');
-    chip.className = 'cat-pill' + (item.category===cat ? ' active' : '');
-    chip.textContent = cat;
+    chip.className = 'cat-pill' + (item[field]===val ? ' active' : '');
+    chip.textContent = val;
     chip.addEventListener('click', ()=>{
-      item.category = cat;
+      item[field] = val;
       pushHistory();
       scheduleSave();
       renderExpenses();
@@ -735,7 +752,8 @@ function openCategoryPicker(itemId){
   document.getElementById('catModal').style.display = 'block';
 }
 function closeCategoryPicker(){
-  categoryPickerTargetId = null;
+  pickerTargetId = null;
+  pickerField = null;
   document.getElementById('catModalBackdrop').style.display = 'none';
   document.getElementById('catModal').style.display = 'none';
 }
@@ -1174,6 +1192,7 @@ function renderExpenses(){
         <span class="pill installment-pill" style="cursor:pointer;" data-id="${it.id}" data-edit="installment" data-kind="exp">${installmentLabel(it, curKey) || '+ ตั้งผ่อน'}</span>
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="note" data-kind="exp">${noteLabel(it)}</span>
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="category" data-kind="exp">${categoryLabel(it)}</span>
+        <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="channel" data-kind="exp">${channelLabel(it, rec)}</span>
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
@@ -1221,26 +1240,26 @@ function monthTotals(key){
   return { cardTotal, expTotal, outTotal: expTotal, income };
 }
 
-function renderCategorySummary(list, todayKey){
+function renderFieldSummary(list, todayKey, field, icon, emptyLabel){
   const expM = state.expenseMonthly[todayKey] || {};
-  const byCat = {};
+  const byVal = {};
   state.expenseItems.forEach(it=>{
     const rec = expM[it.id];
     const amt = rec ? Number(rec.amount)||0 : 0;
     if(amt<=0) return;
-    const cat = it.category || 'ไม่ระบุหมวดหมู่';
-    byCat[cat] = (byCat[cat]||0) + amt;
+    const val = it[field] || emptyLabel;
+    byVal[val] = (byVal[val]||0) + amt;
   });
 
-  const cats = Object.keys(byCat);
-  if(cats.length===0){
-    list.innerHTML = '<div class="sum-empty">ยังไม่มีค่าใช้จ่ายเดือนนี้ให้แยกหมวดหมู่ 🌱<br>ตั้งหมวดหมู่ได้จากหน้าค่าใช้จ่าย</div>';
+  const keys = Object.keys(byVal);
+  if(keys.length===0){
+    list.innerHTML = `<div class="sum-empty">ยังไม่มีค่าใช้จ่ายเดือนนี้ให้แยก 🌱<br>ตั้งค่าได้จากหน้าค่าใช้จ่าย</div>`;
     return;
   }
 
-  const total = cats.reduce((s,c)=>s+byCat[c],0);
-  const maxVal = Math.max(...cats.map(c=>byCat[c]));
-  const sorted = cats.sort((a,b)=>byCat[b]-byCat[a]);
+  const total = keys.reduce((s,c)=>s+byVal[c],0);
+  const maxVal = Math.max(...keys.map(c=>byVal[c]));
+  const sorted = keys.sort((a,b)=>byVal[b]-byVal[a]);
 
   const header = document.createElement('div');
   header.className = 'sum-empty';
@@ -1250,23 +1269,29 @@ function renderCategorySummary(list, todayKey){
   header.textContent = `📅 ${monthLabelFromKey(todayKey)} · รวม ${fmt(total)}`;
   list.appendChild(header);
 
-  sorted.forEach(cat=>{
-    const val = byCat[cat];
-    const pct = Math.round((val/maxVal)*100);
-    const share = total>0 ? Math.round((val/total)*100) : 0;
+  sorted.forEach(val=>{
+    const v = byVal[val];
+    const pct = Math.round((v/maxVal)*100);
+    const share = total>0 ? Math.round((v/total)*100) : 0;
     const row = document.createElement('div');
     row.className = 'sum-item';
     row.style.marginBottom = '8px';
     row.innerHTML = `
       <div class="sum-item-top">
-        <span class="label">🏷️ ${escapeHtml(cat)}</span>
-        <span class="sum-net pos" style="color:var(--ink);">${fmt(val)}</span>
+        <span class="label">${icon} ${escapeHtml(val)}</span>
+        <span class="sum-net pos" style="color:var(--ink);">${fmt(v)}</span>
       </div>
       <div class="sum-bar-track"><div class="sum-bar-fill" style="width:${pct}%"></div></div>
       <div class="sum-item-bottom"><span>${share}% ของค่าใช้จ่ายทั้งหมด</span></div>
     `;
     list.appendChild(row);
   });
+}
+function renderCategorySummary(list, todayKey){
+  renderFieldSummary(list, todayKey, 'category', '🏷️', 'ไม่ระบุหมวดหมู่');
+}
+function renderChannelSummary(list, todayKey){
+  renderFieldSummary(list, todayKey, 'channel', '💳', 'ไม่ระบุช่องทาง');
 }
 
 function renderInsights(list, todayKey){
@@ -1393,6 +1418,10 @@ function renderSummary(){
 
   if(sumView==='category'){
     renderCategorySummary(list, todayKey);
+    return;
+  }
+  if(sumView==='channel'){
+    renderChannelSummary(list, todayKey);
     return;
   }
   if(sumView==='insights'){
@@ -1960,8 +1989,8 @@ document.body.addEventListener('click', (e)=>{
       return;
     }
 
-    if(field==='category'){
-      openCategoryPicker(id);
+    if(field==='category' || field==='channel'){
+      openFieldPicker(id, field);
       return;
     }
 
@@ -2083,13 +2112,13 @@ document.getElementById('alertBannerClose').addEventListener('click', ()=>{
 
 document.getElementById('exportCsv').addEventListener('click', exportCsv);
 
-// ---- category picker modal buttons ----
+// ---- field picker modal buttons (category / channel) ----
 document.getElementById('catModalBackdrop').addEventListener('click', closeCategoryPicker);
 document.getElementById('catModalCloseBtn').addEventListener('click', closeCategoryPicker);
 document.getElementById('catModalClear').addEventListener('click', ()=>{
-  const item = state.expenseItems.find(x=>x.id===categoryPickerTargetId);
-  if(item){
-    item.category = '';
+  const item = state.expenseItems.find(x=>x.id===pickerTargetId);
+  if(item && pickerField){
+    item[pickerField] = '';
     pushHistory();
     scheduleSave();
     renderExpenses();
@@ -2099,9 +2128,9 @@ document.getElementById('catModalClear').addEventListener('click', ()=>{
 document.getElementById('catModalAddBtn').addEventListener('click', ()=>{
   const val = document.getElementById('catModalInput').value.trim();
   if(!val) return;
-  const item = state.expenseItems.find(x=>x.id===categoryPickerTargetId);
-  if(item){
-    item.category = val;
+  const item = state.expenseItems.find(x=>x.id===pickerTargetId);
+  if(item && pickerField){
+    item[pickerField] = val;
     pushHistory();
     scheduleSave();
     renderExpenses();
@@ -2292,28 +2321,52 @@ try{
     const qaScreen = document.getElementById('quickAddScreen');
     qaScreen.style.display = 'flex';
     const qaAmount = document.getElementById('qaAmount');
-    const qaName = document.getElementById('qaName');
+    const qaChannel = document.getElementById('qaChannel');
     const qaConfirm = document.getElementById('qaConfirm');
+    const qaChannelList = document.getElementById('qaChannelList');
+    function refreshChannelSuggestions(){
+      qaChannelList.innerHTML = getAllKnownValues('channel').map(v=>`<option value="${escapeHtml(v)}">`).join('');
+    }
+    refreshChannelSuggestions();
     qaAmount.focus();
     function saveQuickAdd(){
       const amt = Number(qaAmount.value)||0;
-      const name = qaName.value.trim() || 'รายการด่วน';
+      const channel = qaChannel.value.trim();
       if(amt<=0){ qaAmount.focus(); return; }
-      const it = {id:uid(), name, sortIndex:Date.now()};
       const key = monthKey(new Date());
-      state.expenseItems.push(it);
       ensureMonth(state, key);
-      state.expenseMonthly[key][it.id] = {amount:amt, paid:false};
+
+      let it;
+      if(channel){
+        // reuse the same item across every quick-add for this channel, so
+        // amounts accumulate into one running total instead of piling up
+        // as separate line items
+        it = state.expenseItems.find(x=>x.channel && x.channel.toLowerCase()===channel.toLowerCase());
+        if(!it){
+          it = {id:uid(), name:channel, channel:channel, sortIndex:Date.now()};
+          state.expenseItems.push(it);
+        }
+      }else{
+        it = {id:uid(), name:'รายการด่วน', sortIndex:Date.now()};
+        state.expenseItems.push(it);
+      }
+
+      if(!state.expenseMonthly[key][it.id]) state.expenseMonthly[key][it.id] = {amount:0, paid:false};
+      const rec = state.expenseMonthly[key][it.id];
+      rec.amount = (Number(rec.amount)||0) + amt;
+      rec.lastRecorded = new Date().toISOString();
+
       pushHistory();
       scheduleSave();
       qaAmount.value = '';
-      qaName.value = '';
+      qaChannel.value = '';
+      refreshChannelSuggestions();
       qaConfirm.classList.add('show');
       setTimeout(()=>qaConfirm.classList.remove('show'), 1200);
       qaAmount.focus();
     }
     document.getElementById('qaSave').addEventListener('click', saveQuickAdd);
-    qaName.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveQuickAdd(); });
+    qaChannel.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveQuickAdd(); });
   }
 }catch(e){
   console.error('init failed', e);
