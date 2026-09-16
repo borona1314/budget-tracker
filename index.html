@@ -309,6 +309,42 @@
   }
   .pin-error{color:var(--stamp);font-size:12px;margin-top:8px;min-height:14px;}
 
+  #quickAddScreen{
+    position:fixed;inset:0;background:var(--paper);z-index:60;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .qa-box{width:100%;max-width:340px;text-align:center;}
+  .qa-emoji{font-size:48px;margin-bottom:6px;}
+  .qa-title{font-family:Georgia,serif;font-size:20px;margin-bottom:22px;}
+  .qa-amount-wrap{
+    display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px;
+    border-bottom:2px solid var(--rule);padding-bottom:10px;
+  }
+  .qa-amount-wrap span{font-size:26px;color:var(--ink-faint);}
+  #qaAmount{
+    border:none;background:transparent;font-size:42px;font-weight:800;color:var(--stamp);
+    width:100%;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  #qaAmount:focus{outline:none;}
+  .qa-name{
+    width:100%;padding:13px;border-radius:12px;border:1px solid var(--rule);
+    background:var(--card-bg);color:var(--ink);font-size:15px;text-align:center;
+    margin-bottom:16px;font-family:inherit;
+  }
+  .qa-name:focus{outline:none;border-color:var(--stamp);}
+  #qaSave{
+    width:100%;padding:15px;border-radius:14px;border:none;background:var(--stamp);
+    color:#fff;font-size:16px;font-weight:700;cursor:pointer;
+  }
+  .qa-confirm{
+    margin-top:14px;color:var(--paid);font-weight:700;font-size:14px;
+    opacity:0;transition:opacity .2s;
+  }
+  .qa-confirm.show{opacity:1;}
+  .qa-open-app{
+    display:block;margin-top:26px;font-size:12px;color:var(--ink-faint);text-decoration:underline;
+  }
+
   .alert-banner{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     background:var(--stamp-soft);border:1px solid var(--stamp);border-radius:12px;
@@ -332,6 +368,22 @@
   .inst-bar-track{width:100%;height:8px;background:var(--paper-deep);border-radius:5px;overflow:hidden;margin-bottom:8px;}
   .inst-bar-fill{height:100%;background:var(--stamp);border-radius:5px;}
   .inst-row-bottom{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);}
+
+  .pending-item{
+    background:var(--stamp-soft);border:1px solid var(--stamp);border-radius:12px;
+    padding:11px 12px;margin-bottom:8px;
+  }
+  .pending-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .pending-item-top .plat{font-size:13px;font-weight:700;color:var(--stamp);}
+  .pending-item-top .amt{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;color:var(--stamp);}
+  .pending-item .subj{font-size:11px;color:var(--ink-soft);margin-bottom:8px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pending-item-actions{display:flex;gap:8px;}
+  .pending-item-actions button{
+    flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .pending-item-actions .confirm{background:var(--stamp);color:#fff;}
+  .pending-item-actions .dismiss{background:var(--paper-deep);color:var(--ink-soft);}
 
   .cat-pill-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .cat-pill{
@@ -465,6 +517,18 @@
   </div>
 </div>
 
+<div id="quickAddScreen" style="display:none;">
+  <div class="qa-box">
+    <div class="qa-emoji">💸</div>
+    <div class="qa-title">บันทึกด่วน</div>
+    <div class="qa-amount-wrap"><span>฿</span><input id="qaAmount" type="number" inputmode="decimal" placeholder="0"></div>
+    <input id="qaName" class="qa-name" type="text" placeholder="ชื่อรายการ (เช่น กาแฟ, ข้าว)">
+    <button id="qaSave">บันทึก</button>
+    <div id="qaConfirm" class="qa-confirm">✅ บันทึกแล้ว!</div>
+    <a class="qa-open-app" href="./">เปิดแอปแบบเต็ม</a>
+  </div>
+</div>
+
 <div class="wrap">
   <div id="alertBanner" class="alert-banner" style="display:none;">
     <div id="alertBannerText"></div>
@@ -521,6 +585,7 @@
 
   <!-- EXPENSES TAB -->
   <section id="tab-expenses" style="display:none;">
+    <div id="pendingList"></div>
     <button class="add-row" id="addExpTop">➕ เพิ่มรายการค่าใช้จ่าย</button>
     <div id="expensesCapture">
       <div class="income-box">
@@ -919,6 +984,60 @@ function attachRealtimeListener(){
     if(hadOrphans) scheduleSave(); // persist the cleaned-up version so the ghost doesn't come back
   }, (err)=>{ console.error('firebase read failed', err); });
 }
+
+// ---- pending expenses captured from Gmail receipts (Lazada/Shopee/TikTok Shop) ----
+let pendingExpenses = {};
+function attachPendingListener(){
+  if(!dataRef) return;
+  firebase.database().ref('pendingExpenses').on('value', (snapshot)=>{
+    pendingExpenses = snapshot.val() || {};
+    renderPendingExpenses();
+  }, (err)=>{ console.error('pending expenses read failed', err); });
+}
+function renderPendingExpenses(){
+  const list = document.getElementById('pendingList');
+  if(!list) return;
+  list.innerHTML = '';
+  const ids = Object.keys(pendingExpenses);
+  ids.forEach(id=>{
+    const item = pendingExpenses[id];
+    const row = document.createElement('div');
+    row.className = 'pending-item';
+    row.innerHTML = `
+      <div class="pending-item-top">
+        <span class="plat">📥 ${escapeHtml(item.platform||'')}</span>
+        <span class="amt">฿${(Number(item.amount)||0).toLocaleString('en-US')}</span>
+      </div>
+      <div class="subj">${escapeHtml(item.subject||'')}</div>
+      <div class="pending-item-actions">
+        <button class="confirm" data-id="${id}">✅ เพิ่มเป็นรายการ</button>
+        <button class="dismiss" data-id="${id}">✕ ไม่ใช่</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+document.body.addEventListener('click', (e)=>{
+  const confirmBtn = e.target.closest('.pending-item-actions .confirm');
+  const dismissBtn = e.target.closest('.pending-item-actions .dismiss');
+  if(confirmBtn){
+    const id = confirmBtn.dataset.id;
+    const item = pendingExpenses[id];
+    if(item){
+      const it = {id:uid(), name:item.platform+' — '+(item.subject||'').slice(0,30), category:item.platform, sortIndex:Date.now()};
+      state.expenseItems.push(it);
+      ensureMonth(state, curKey);
+      state.expenseMonthly[curKey][it.id] = {amount:Number(item.amount)||0, paid:false};
+      pushHistory();
+      scheduleSave();
+      renderExpenses();
+    }
+    firebase.database().ref('pendingExpenses/'+id).remove();
+  }
+  if(dismissBtn){
+    firebase.database().ref('pendingExpenses/'+dismissBtn.dataset.id).remove();
+  }
+});
 
 function ensureMonth(st, key){
   if(!st.cardMonthly[key]) st.cardMonthly[key] = {};
@@ -2165,6 +2284,37 @@ try{
   renderAll();
   pushHistory();
   attachRealtimeListener();
+  attachPendingListener();
+
+  const isQuickAdd = new URLSearchParams(location.search).get('quickadd') === '1';
+  if(isQuickAdd){
+    document.querySelector('.wrap').style.display = 'none';
+    const qaScreen = document.getElementById('quickAddScreen');
+    qaScreen.style.display = 'flex';
+    const qaAmount = document.getElementById('qaAmount');
+    const qaName = document.getElementById('qaName');
+    const qaConfirm = document.getElementById('qaConfirm');
+    qaAmount.focus();
+    function saveQuickAdd(){
+      const amt = Number(qaAmount.value)||0;
+      const name = qaName.value.trim() || 'รายการด่วน';
+      if(amt<=0){ qaAmount.focus(); return; }
+      const it = {id:uid(), name, sortIndex:Date.now()};
+      const key = monthKey(new Date());
+      state.expenseItems.push(it);
+      ensureMonth(state, key);
+      state.expenseMonthly[key][it.id] = {amount:amt, paid:false};
+      pushHistory();
+      scheduleSave();
+      qaAmount.value = '';
+      qaName.value = '';
+      qaConfirm.classList.add('show');
+      setTimeout(()=>qaConfirm.classList.remove('show'), 1200);
+      qaAmount.focus();
+    }
+    document.getElementById('qaSave').addEventListener('click', saveQuickAdd);
+    qaName.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveQuickAdd(); });
+  }
 }catch(e){
   console.error('init failed', e);
   document.body.insertAdjacentHTML('afterbegin',
