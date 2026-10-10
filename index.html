@@ -82,6 +82,18 @@
     margin-top:-22px;flex:0 0 auto;cursor:pointer;line-height:1;
   }
 
+  .sum-bar{
+    position:fixed;left:0;right:0;bottom:64px;z-index:39;max-width:640px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--stamp);color:#fff;padding:10px 16px;font-size:13px;font-weight:700;
+  }
+  .sum-bar button{
+    background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;
+    padding:6px 10px;font-size:12px;cursor:pointer;flex:0 0 auto;
+  }
+  .sum-select-cb{width:18px;height:18px;margin-right:8px;accent-color:var(--stamp);flex:0 0 auto;}
+  .row.sum-selected{box-shadow:0 0 0 2px var(--stamp);}
+
   .month-bar{
     display:flex;align-items:center;justify-content:space-between;
     background:var(--card-bg);border:1px solid var(--rule);border-radius:12px;
@@ -367,7 +379,7 @@
   }
   .inst-bar-track{width:100%;height:8px;background:var(--paper-deep);border-radius:5px;overflow:hidden;margin-bottom:8px;}
   .inst-bar-fill{height:100%;background:var(--stamp);border-radius:5px;}
-  .inst-row-bottom{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);}
+  .inst-row-bottom{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap;gap:4px;}
 
   .pending-item{
     background:var(--stamp-soft);border:1px solid var(--stamp);border-radius:12px;
@@ -400,6 +412,10 @@
   }
   .top-controls button:disabled{opacity:.35;cursor:default;}
 
+  .sticky-controls{
+    position:sticky;top:0;z-index:30;background:var(--paper);
+    padding-top:6px;margin:0 -16px;padding-left:16px;padding-right:16px;
+  }
   .search-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
   .search-bar input{
     flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);
@@ -546,18 +562,21 @@
       <button id="redoBtn" title="ทำซ้ำ" disabled>↪️</button>
       <button id="themeToggleBtn" title="สลับธีม">🌙</button>
       <button id="searchToggleBtn" title="ค้นหา">🔍</button>
+      <button id="sumModeBtn" title="เลือกรายการเพื่อรวมยอด">🔢</button>
     </div>
   </header>
 
-  <div class="search-bar" id="searchBar" style="display:none;">
-    <input type="text" id="searchInput" placeholder="ค้นหาชื่อรายการ...">
-    <button id="searchClearBtn">✕</button>
-  </div>
+  <div class="sticky-controls" id="stickyControls">
+    <div class="search-bar" id="searchBar" style="display:none;">
+      <input type="text" id="searchInput" placeholder="ค้นหาชื่อรายการ...">
+      <button id="searchClearBtn">✕</button>
+    </div>
 
-  <div class="month-bar" id="monthBar">
-    <button id="prevMonth">‹</button>
-    <div class="label" id="monthLabel">📅 -</div>
-    <button id="nextMonth">›</button>
+    <div class="month-bar" id="monthBar">
+      <button id="prevMonth">‹</button>
+      <div class="label" id="monthLabel">📅 -</div>
+      <button id="nextMonth">›</button>
+    </div>
   </div>
 
   <!-- CARDS TAB -->
@@ -641,6 +660,11 @@
   <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
   <div class="footer-note" style="margin-top:6px;"><button id="notifSettingsBtn">🔔 เปิดการแจ้งเตือนบิลค้างจ่าย</button></div>
   <div class="footer-note" style="margin-top:6px;"><a href="?quickadd=1" style="color:var(--stamp);font-weight:700;">⚡ เปิดหน้าบันทึกด่วน (กดเพิ่มหน้าจอโฮมจากตรงนี้ได้เลย)</a></div>
+</div>
+
+<div id="sumBar" class="sum-bar" style="display:none;">
+  <span id="sumBarText">เลือก 0 รายการ · รวม ฿0</span>
+  <button id="sumBarClose">✕ ออก</button>
 </div>
 
 <nav class="bottom-nav">
@@ -766,6 +790,10 @@ function closeCategoryPicker(){
 // "ล้างยอดของเดือนนี้". Bounded to 24 months ahead.
 const FORWARD_PROPAGATE_MONTHS = 24;
 function propagateForwardAmount(kind, id, fromKey, amount){
+  if(kind==='exp'){
+    const it = state.expenseItems.find(x=>x.id===id);
+    if(it && it.channel) return; // channel accumulators always start fresh each month
+  }
   const todayKey = monthKey(new Date());
   const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
   const base = fromKey > todayKey ? fromKey : todayKey; // don't touch already-past months
@@ -798,6 +826,8 @@ let current = new Date();
 let curKey = monthKey(current);
 let state = null;
 let activeTab = 'cards';
+let sumMode = false;
+let selectedSumIds = new Set();
 
 function defaultState(){
   const seedKey = monthKey(new Date());
@@ -1072,7 +1102,10 @@ function ensureMonth(st, key){
   });
   st.expenseItems.forEach(it=>{
     if(!st.expenseMonthly[key][it.id]){
-      const carry = prevExp[it.id];
+      // quick-add channel accumulators (it.channel set) always start fresh
+      // at 0 each month — carrying forward would double-count since the
+      // quick-add screen keeps adding to whatever's already there
+      const carry = it.channel ? null : prevExp[it.id];
       st.expenseMonthly[key][it.id] = { amount: carry ? carry.amount : 0, paid:false };
     }
   });
@@ -1182,9 +1215,10 @@ function renderExpenses(){
     total += Number(rec.amount)||0;
     if(rec.paid) paid += Number(rec.amount)||0;
     const row = document.createElement('div');
-    row.className = 'row' + (rec.paid?' is-paid':'');
+    row.className = 'row' + (rec.paid?' is-paid':'') + (sumMode && selectedSumIds.has(it.id) ? ' sum-selected':'');
     row.innerHTML = `
       <div class="row-top">
+        ${sumMode ? `<input type="checkbox" class="sum-select-cb" data-id="${it.id}" ${selectedSumIds.has(it.id)?'checked':''}>` : ''}
         <input class="row-name" data-id="${it.id}" data-f="name" data-kind="expitem" value="${escapeHtml(it.name)}">
         <button class="row-del" data-id="${it.id}" data-type="exp">✕</button>
       </div>
@@ -1193,6 +1227,7 @@ function renderExpenses(){
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="note" data-kind="exp">${noteLabel(it)}</span>
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="category" data-kind="exp">${categoryLabel(it)}</span>
         <span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="channel" data-kind="exp">${channelLabel(it, rec)}</span>
+        ${rec.log && rec.log.length ? `<span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="history" data-kind="exp">📜 ประวัติ (${rec.log.length})</span>` : ''}
       </div>
       <div class="row-bottom">
         <div class="amount-wrap"><span class="cur">฿</span>
@@ -1756,6 +1791,30 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
   renderAll();
 });
 
+// ---- swipe left/right on the cards/expenses content to change month ----
+(function(){
+  let swipeStartX=null, swipeStartY=null;
+  const zones = [document.getElementById('tab-cards'), document.getElementById('tab-expenses')];
+  zones.forEach(zone=>{
+    if(!zone) return;
+    zone.addEventListener('touchstart', (e)=>{
+      if(e.target.closest('input,textarea,.card-row,.row')) { swipeStartX=null; return; } // don't hijack row drag/inputs
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
+    }, {passive:true});
+    zone.addEventListener('touchend', (e)=>{
+      if(swipeStartX===null) return;
+      const dx = e.changedTouches[0].clientX - swipeStartX;
+      const dy = e.changedTouches[0].clientY - swipeStartY;
+      if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)*1.5){
+        if(dx < 0) document.getElementById('nextMonth').click();
+        else document.getElementById('prevMonth').click();
+      }
+      swipeStartX = null;
+    }, {passive:true});
+  });
+})();
+
 // ---- Show a tab's content as a downloadable PNG image ----
 // iOS Safari doesn't reliably handle direct data-URI downloads (especially
 // for large images), so instead we open a new tab with the image — the
@@ -1989,6 +2048,15 @@ document.body.addEventListener('click', (e)=>{
       return;
     }
 
+    if(field==='history'){
+      const kind = editPill.dataset.kind;
+      const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
+      if(!rec || !rec.log || rec.log.length===0){ alert('ยังไม่มีประวัติการบันทึก'); return; }
+      const lines = rec.log.slice().reverse().map(e=>`${formatPaidDate((e.at||'').slice(0,10))} — ฿${(Number(e.amt)||0).toLocaleString('en-US')}`);
+      alert('📜 ประวัติการบันทึกด่วน (ล่าสุดก่อน):\n\n' + lines.join('\n'));
+      return;
+    }
+
     if(field==='category' || field==='channel'){
       openFieldPicker(id, field);
       return;
@@ -2182,6 +2250,44 @@ document.getElementById('searchClearBtn').addEventListener('click', ()=>{
   document.getElementById('searchInput').focus();
 });
 
+// ---- multi-select sum mode ----
+function updateSumBar(){
+  const bar = document.getElementById('sumBar');
+  if(!sumMode || selectedSumIds.size===0){ bar.style.display = sumMode ? 'flex' : 'none'; }
+  else bar.style.display = 'flex';
+  let total = 0;
+  selectedSumIds.forEach(id=>{
+    const rec = state.expenseMonthly[curKey] && state.expenseMonthly[curKey][id];
+    if(rec) total += Number(rec.amount)||0;
+  });
+  document.getElementById('sumBarText').textContent = `เลือก ${selectedSumIds.size} รายการ · รวม ${fmt(total)}`;
+}
+document.getElementById('sumModeBtn').addEventListener('click', ()=>{
+  sumMode = !sumMode;
+  selectedSumIds.clear();
+  if(activeTab!=='expenses'){
+    // sum mode only applies to the expenses list — switch there automatically
+    const expTab = [...document.querySelectorAll('.bottom-nav .tab')].find(t=>t.dataset.tab==='expenses');
+    if(expTab) expTab.click();
+  }
+  updateSumBar();
+  renderExpenses();
+});
+document.getElementById('sumBarClose').addEventListener('click', ()=>{
+  sumMode = false;
+  selectedSumIds.clear();
+  updateSumBar();
+  renderExpenses();
+});
+document.body.addEventListener('change', (e)=>{
+  if(e.target.classList.contains('sum-select-cb')){
+    const id = e.target.dataset.id;
+    if(e.target.checked) selectedSumIds.add(id); else selectedSumIds.delete(id);
+    e.target.closest('.row').classList.toggle('sum-selected', e.target.checked);
+    updateSumBar();
+  }
+});
+
 // ---- undo / redo ----
 let historyStack = [];
 let historyIndex = -1;
@@ -2355,6 +2461,9 @@ try{
       const rec = state.expenseMonthly[key][it.id];
       rec.amount = (Number(rec.amount)||0) + amt;
       rec.lastRecorded = new Date().toISOString();
+      if(!rec.log) rec.log = [];
+      rec.log.push({ amt, at: rec.lastRecorded });
+      if(rec.log.length > 50) rec.log = rec.log.slice(-50);
 
       pushHistory();
       scheduleSave();
