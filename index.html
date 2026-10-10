@@ -2082,6 +2082,7 @@ function recalcCardsTotal(){
     total += Number(rec.amount)||0;
   });
   document.getElementById('cardsTotalV').textContent = fmt(total);
+  renderInstallments();
 }
 
 function recalcExpTotals(){
@@ -2096,6 +2097,7 @@ function recalcExpTotals(){
   document.getElementById('expPaidV').textContent = fmt(paid);
   const income = Number(state.income[curKey])||0;
   updateExpRemain(income-total);
+  renderInstallments();
 }
 
 document.body.addEventListener('input', (e)=>{
