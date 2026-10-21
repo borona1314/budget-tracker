@@ -1420,8 +1420,11 @@ function renderInstallments(){
     const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
     const rec = (store[curKey]||{})[item.id];
     const monthlyAmount = rec ? Number(rec.amount)||0 : 0;
-    const done = n > total;
-    const remainingMonths = done ? 0 : Math.max(0, total - n + 1);
+    const currentPaid = !!(rec && rec.paid);
+    const done = n > total || (n === total && currentPaid);
+    // if this month's installment is already marked paid, it no longer
+    // counts toward what's still owed
+    const remainingMonths = done ? 0 : Math.max(0, total - n + (currentPaid ? 0 : 1));
     const remainingAmount = remainingMonths * monthlyAmount;
     totalRemain += remainingAmount;
 
