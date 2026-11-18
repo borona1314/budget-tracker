@@ -97,7 +97,9 @@
   .stamp-row .stamp{padding:10px 8px;}
   .stamp-row .stamp .v{font-size:14.5px;}
   .stamp.unpaid .v{color:var(--stamp);}
-  .pay-status{width:100%;font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .pay-status{width:100%;font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.55;}
+  .pay-status .ln2{color:var(--ink-faint);font-size:11px;}
+  .amount-wrap .cur{white-space:nowrap;}
   .row.is-partial{border-left:4px solid var(--paid);}
 
   .qs-amount-wrap{
@@ -1266,16 +1268,32 @@ function setAllPaid(it, rec, flag){
     (rec.log||[]).forEach(e=>{ e.paid = false; });
   }
 }
+function round2(n){ return Math.round((Number(n)||0)*100)/100; }
+function fmtMoney(n){
+  return '฿' + round2(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+// amount still unpaid for an expense row
+function unpaidOf(it, rec){ return round2((Number(rec.amount)||0) - amountPaidOf(it, rec)); }
+// the number shown in a row's amount box: for channel items it is the UNPAID amount
+// (new entries recorded since the last payment); other items show their full amount
+function displayAmountOf(it, rec){
+  return isPartialItem(it) ? unpaidOf(it, rec) : (Number(rec.amount)||0);
+}
 function payStatusText(it, rec){
-  const amt = Number(rec.amount)||0, pa = amountPaidOf(it, rec);
-  let txt = `✅ จ่ายแล้ว ${fmt(pa)} · ⏳ ยังไม่จ่าย ${fmt(amt-pa)}`;
-  if(rec.lastPaidAt && pa>0) txt += ` · จ่ายล่าสุด ${formatPaidDate(rec.lastPaidAt)}`;
-  return txt;
+  const amt = round2(rec.amount), pa = round2(amountPaidOf(it, rec));
+  let h = `รวม ${fmtMoney(amt)} · ✅ จ่ายแล้ว ${fmtMoney(pa)} · ⏳ ยังไม่จ่าย ${fmtMoney(amt-pa)}`;
+  if(rec.lastPaidAt && pa>0){
+    h += `<br><span class="ln2">จ่ายล่าสุด ${formatPaidDate(rec.lastPaidAt)}${rec.lastPaidAmt ? ` (${fmtMoney(rec.lastPaidAmt)})` : ''}</span>`;
+  }
+  return h;
 }
 // update the status text/checkbox in place (used while typing, when a full re-render would close the keyboard)
 function refreshPayStatus(it, rec){
   const el = document.querySelector(`.pay-status[data-id="${it.id}"]`);
-  if(el) el.textContent = payStatusText(it, rec);
+  if(el){
+    el.innerHTML = payStatusText(it, rec);
+    el.style.display = (Number(rec.amount)||0) > 0 ? '' : 'none';
+  }
   const cb = document.querySelector(`input[data-f="paid"][data-kind="exp"][data-id="${it.id}"]`);
   if(cb){
     cb.checked = !!rec.paid;
@@ -1382,10 +1400,10 @@ function renderExpenses(){
         ${rec.log && rec.log.length ? `<span class="pill" style="cursor:pointer;" data-id="${it.id}" data-edit="history" data-kind="exp">📜 ประวัติ (${rec.log.length})</span>` : ''}
       </div>
       <div class="row-bottom">
-        <div class="amount-wrap"><span class="cur">฿</span>
-          <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${toDisplayAmount(rec.amount)}" placeholder="0">
+        <div class="amount-wrap"><span class="cur">${isPartialItem(it) ? '⏳ ยังไม่จ่าย ฿' : '฿'}</span>
+          <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${toDisplayAmount(displayAmountOf(it, rec))}" placeholder="0">
         </div>
-        ${partial ? `<div class="pay-status" data-id="${it.id}">${payStatusText(it, rec)}</div>` : ''}
+        ${isPartialItem(it) ? `<div class="pay-status" data-id="${it.id}"${partial ? '' : ' style="display:none"'}>${payStatusText(it, rec)}</div>` : ''}
         <div class="paid-row">
           ${rec.paid?`<span class="paid-date-wrap"><input type="date" class="paid-date-input" data-id="${it.id}" data-kind="exp" value="${rec.paidDate||''}"><span>${formatPaidDate(rec.paidDate)}</span></span>`:'<span></span>'}
           <label class="paidbox"><input type="checkbox" data-id="${it.id}" data-f="paid" data-kind="exp" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
@@ -2509,10 +2527,13 @@ document.body.addEventListener('input', (e)=>{
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){
       const itP = kind==='card' ? null : state.expenseItems.find(x=>x.id===id);
-      if(itP && isPartialItem(itP)) ensurePaidAmount(itP, rec);
-      rec.amount = parseAmount(t.value);
+      const partialP = !!(itP && isPartialItem(itP));
+      if(partialP) ensurePaidAmount(itP, rec);
+      const typed = parseAmount(t.value);
+      // channel items: the box holds the unpaid part, so total = already paid + typed
+      rec.amount = partialP ? round2((Number(rec.paidAmount)||0) + typed) : typed;
       propagateForwardAmount(kind, id, curKey, rec.amount);
-      if(itP && isPartialItem(itP)){ syncPaidFlag(itP, rec); refreshPayStatus(itP, rec); }
+      if(partialP){ syncPaidFlag(itP, rec); refreshPayStatus(itP, rec); }
     }
     scheduleSave();
     // Update only the totals, never rebuild the list here — rebuilding would
@@ -2656,7 +2677,8 @@ function updateSumBar(){
   let total = 0;
   selectedSumIds.forEach(id=>{
     const rec = state.expenseMonthly[curKey] && state.expenseMonthly[curKey][id];
-    if(rec) total += Number(rec.amount)||0;
+    const itS = state.expenseItems.find(x=>x.id===id);
+    if(rec && itS) total += displayAmountOf(itS, rec);
   });
   document.getElementById('sumBarText').textContent = `เลือก ${selectedSumIds.size} รายการ · รวม ${fmt(total)}`;
 }
