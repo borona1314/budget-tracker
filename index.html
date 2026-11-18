@@ -94,6 +94,60 @@
   .sum-select-cb{width:18px;height:18px;margin-right:8px;accent-color:var(--stamp);flex:0 0 auto;}
   .row.sum-selected{box-shadow:0 0 0 2px var(--stamp);}
 
+  .stamp-row .stamp{padding:10px 8px;}
+  .stamp-row .stamp .v{font-size:14.5px;}
+  .stamp.unpaid .v{color:var(--stamp);}
+  .pay-status{width:100%;font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .row.is-partial{border-left:4px solid var(--paid);}
+
+  .qs-amount-wrap{
+    display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 12px;
+    border-bottom:2px solid var(--rule);padding-bottom:8px;
+  }
+  .qs-amount-wrap span{font-size:22px;color:var(--ink-faint);}
+  #qsAmount{
+    border:none;background:transparent;font-size:34px;font-weight:800;color:var(--stamp);
+    width:100%;text-align:center;font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  #qsAmount:focus{outline:none;}
+  .qs-channel{
+    width:100%;padding:11px;border-radius:11px;border:1px solid var(--rule);background:var(--card-bg);
+    color:var(--ink);font-size:14px;text-align:center;margin-bottom:12px;font-family:inherit;
+  }
+  .qs-save{
+    width:100%;padding:13px;border-radius:12px;border:none;background:var(--stamp);
+    color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .qs-other{margin-top:14px;display:flex;flex-direction:column;gap:6px;}
+  #quickSheet .qa-confirm{text-align:center;}
+
+  .hist-row{display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px dashed var(--rule);}
+  .hist-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--paid);flex:0 0 auto;}
+  .hist-date-input{font-size:11px;color:transparent;background:transparent;border:none;font-family:inherit;position:relative;width:96px;}
+  .hist-row .paid-date-wrap{flex:1 1 auto;min-width:0;}
+  .hist-baht{color:var(--ink-faint);font-size:13px;}
+  .hist-amt{
+    width:82px;padding:6px 7px;border-radius:8px;border:1px solid var(--rule);background:var(--card-bg);
+    color:var(--ink);font-size:13px;text-align:right;font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .hist-del{background:none;border:none;color:var(--ink-faint);font-size:16px;cursor:pointer;padding:2px 4px;}
+  .hist-total{font-size:12px;color:var(--ink-soft);margin:10px 0 4px;line-height:1.6;}
+
+  .sum-month-picker{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;
+    background:var(--card-bg);border:1px solid var(--rule);border-radius:14px;padding:6px;
+  }
+  .sum-month-picker button{
+    width:38px;height:34px;border-radius:10px;border:none;background:var(--paper-deep);
+    color:var(--ink);font-size:16px;cursor:pointer;
+  }
+  .sum-month-picker button:disabled{opacity:.3;cursor:default;}
+  .sum-month-picker .lbl{font-family:Georgia,serif;font-weight:700;font-size:14.5px;}
+  .sum-hint{font-size:11.5px;color:var(--ink-soft);padding:0 4px 10px;line-height:1.5;}
+  .sum-item.sel{box-shadow:0 0 0 2px var(--stamp);}
+  .inst-asof{font-size:11.5px;color:var(--ink-soft);padding:0 4px 12px;line-height:1.5;}
+  .inst-stats{font-size:11px;color:var(--ink-faint);margin-top:5px;}
+
   .month-bar{
     display:flex;align-items:center;justify-content:space-between;
     background:var(--card-bg);border:1px solid var(--rule);border-radius:12px;
@@ -620,7 +674,8 @@
       </div>
       <div class="stamp-row">
         <div class="stamp"><div class="k">🧾 ค่าใช้จ่ายรวม</div><div class="v" id="expTotalV">฿0</div></div>
-        <div class="stamp paid"><div class="k">✅ จ่ายไปแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
+        <div class="stamp paid"><div class="k">✅ จ่ายแล้ว</div><div class="v" id="expPaidV">฿0</div></div>
+        <div class="stamp unpaid"><div class="k">⏳ ยังไม่จ่าย</div><div class="v" id="expUnpaidV">฿0</div></div>
       </div>
       <div class="list" id="expList"></div>
     </div>
@@ -637,6 +692,7 @@
       <div class="k">📆 ยอดผ่อนคงเหลือรวม</div>
       <div class="v" id="instTotalRemainV">฿0</div>
     </div>
+    <div class="inst-asof" id="instAsOf"></div>
     <div class="list" id="instList"></div>
   </section>
 
@@ -660,6 +716,26 @@
   <div class="footer-note" style="margin-top:6px;"><button id="pinSettingsBtn">🔒 ตั้ง/ลบรหัสผ่านสำหรับล็อกแอป</button></div>
   <div class="footer-note" style="margin-top:6px;"><button id="notifSettingsBtn">🔔 เปิดการแจ้งเตือนบิลค้างจ่าย</button></div>
   <div class="footer-note" style="margin-top:6px;"><a href="?quickadd=1" style="color:var(--stamp);font-weight:700;">⚡ เปิดหน้าบันทึกด่วน (กดเพิ่มหน้าจอโฮมจากตรงนี้ได้เลย)</a></div>
+</div>
+
+<div class="cat-modal" id="quickSheet" style="display:none;">
+  <div class="cat-modal-title">⚡ บันทึกด่วน</div>
+  <div class="qs-amount-wrap"><span>฿</span><input id="qsAmount" type="number" inputmode="decimal" placeholder="0"></div>
+  <input id="qsChannel" class="qs-channel" type="text" list="qaChannelList" placeholder="ช่องทาง (เช่น Lazada, Shopee, เงินสด)">
+  <button class="qs-save" id="qsSave">บันทึก</button>
+  <div class="qa-confirm" id="qsConfirm">✅ บันทึกแล้ว!</div>
+  <div class="qs-other">
+    <button class="add-row" id="qsAddExp">➕ เพิ่มรายการค่าใช้จ่ายใหม่</button>
+    <button class="add-row" id="qsAddCard">💳 เพิ่มบัตร/บิลใหม่</button>
+  </div>
+  <button class="add-row" id="qsClose">ปิด</button>
+</div>
+
+<div class="cat-modal" id="histModal" style="display:none;">
+  <div class="cat-modal-title" id="histModalTitle">📜 ประวัติการบันทึก</div>
+  <div id="histModalList"></div>
+  <div class="hist-total" id="histModalTotal"></div>
+  <button class="add-row" id="histModalClose">ปิด</button>
 </div>
 
 <div id="sumBar" class="sum-bar" style="display:none;">
@@ -727,7 +803,7 @@ function channelLabel(it, rec){
   if(!it.channel) return '+ ช่องทาง';
   let label = '💳 ' + it.channel;
   if(rec && rec.lastRecorded){
-    label += ' · ล่าสุด ' + formatPaidDate(rec.lastRecorded.slice(0,10));
+    label += ' · ล่าสุด ' + formatPaidDate(rec.lastRecorded);
   }
   return label;
 }
@@ -1129,12 +1205,86 @@ function isTodayPayDate(pay, key){
   const today = new Date();
   return y===today.getFullYear() && (m-1)===today.getMonth() && pay===today.getDate();
 }
+function localYMD(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayLocalStr(){ return localYMD(new Date()); }
+// accepts "YYYY-MM-DD" or a full ISO timestamp; always returns the LOCAL calendar date
+function toLocalYMD(input){
+  if(!input) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+  const d = new Date(input);
+  return isNaN(d.getTime()) ? '' : localYMD(d);
+}
 function formatPaidDate(dateStr){
-  if(!dateStr) return '';
-  const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return '';
+  const ymd = toLocalYMD(dateStr);
+  if(!ymd) return '';
+  const [y,m,d] = ymd.split('-').map(Number);
   const THAI_MONTHS_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()+543}`;
+  return `${d} ${THAI_MONTHS_SHORT[m-1]} ${y+543}`;
+}
+
+// ---- partial payment: quick-add "channel" items collect many entries, so
+// paying settles what's recorded so far and later entries show up as unpaid ----
+function isPartialItem(it){ return !!(it && it.channel); }
+function ensurePaidAmount(it, rec){
+  if(!isPartialItem(it) || !rec) return;
+  if(rec.paidAmount===undefined){
+    rec.paidAmount = rec.paid ? (Number(rec.amount)||0) : 0;
+    if(rec.paid && rec.log) rec.log.forEach(e=>{ if(e.paid===undefined) e.paid = true; });
+  }
+}
+function amountPaidOf(it, rec){
+  const amt = Number(rec.amount)||0;
+  if(!isPartialItem(it)) return rec.paid ? amt : 0;
+  const pa = rec.paidAmount===undefined ? (rec.paid ? amt : 0) : (Number(rec.paidAmount)||0);
+  return Math.min(amt, Math.max(0, pa));
+}
+function syncPaidFlag(it, rec){
+  if(!isPartialItem(it) || !rec) return;
+  ensurePaidAmount(it, rec);
+  const amt = Number(rec.amount)||0;
+  rec.paidAmount = Math.min(amt, Math.max(0, Number(rec.paidAmount)||0));
+  rec.paid = amt>0 && rec.paidAmount >= amt - 0.005;
+}
+function setAllPaid(it, rec, flag){
+  ensurePaidAmount(it, rec);
+  const amt = Number(rec.amount)||0;
+  if(flag){
+    const newly = amt - (Number(rec.paidAmount)||0);
+    rec.paidAmount = amt;
+    rec.paid = true;
+    rec.paidDate = todayLocalStr();
+    if(newly>0.005){ rec.lastPaidAmt = newly; rec.lastPaidAt = rec.paidDate; }
+    (rec.log||[]).forEach(e=>{ e.paid = true; });
+  }else{
+    rec.paidAmount = 0;
+    rec.paid = false;
+    rec.paidDate = null;
+    rec.lastPaidAmt = null;
+    rec.lastPaidAt = null;
+    (rec.log||[]).forEach(e=>{ e.paid = false; });
+  }
+}
+function payStatusText(it, rec){
+  const amt = Number(rec.amount)||0, pa = amountPaidOf(it, rec);
+  let txt = `✅ จ่ายแล้ว ${fmt(pa)} · ⏳ ยังไม่จ่าย ${fmt(amt-pa)}`;
+  if(rec.lastPaidAt && pa>0) txt += ` · จ่ายล่าสุด ${formatPaidDate(rec.lastPaidAt)}`;
+  return txt;
+}
+// update the status text/checkbox in place (used while typing, when a full re-render would close the keyboard)
+function refreshPayStatus(it, rec){
+  const el = document.querySelector(`.pay-status[data-id="${it.id}"]`);
+  if(el) el.textContent = payStatusText(it, rec);
+  const cb = document.querySelector(`input[data-f="paid"][data-kind="exp"][data-id="${it.id}"]`);
+  if(cb){
+    cb.checked = !!rec.paid;
+    const rowEl = cb.closest('.row');
+    if(rowEl){
+      rowEl.classList.toggle('is-paid', !!rec.paid);
+      rowEl.classList.toggle('is-partial', !rec.paid && amountPaidOf(it, rec)>0);
+    }
+  }
 }
 
 function renderCards(){
@@ -1213,9 +1363,11 @@ function renderExpenses(){
   sortedItems.forEach(it=>{
     const rec = state.expenseMonthly[curKey][it.id];
     total += Number(rec.amount)||0;
-    if(rec.paid) paid += Number(rec.amount)||0;
+    const paidAmt = amountPaidOf(it, rec);
+    paid += paidAmt;
+    const partial = isPartialItem(it) && (Number(rec.amount)||0) > 0;
     const row = document.createElement('div');
-    row.className = 'row' + (rec.paid?' is-paid':'') + (sumMode && selectedSumIds.has(it.id) ? ' sum-selected':'');
+    row.className = 'row' + (rec.paid?' is-paid':'') + (partial && !rec.paid && paidAmt>0 ? ' is-partial':'') + (sumMode && selectedSumIds.has(it.id) ? ' sum-selected':'');
     row.innerHTML = `
       <div class="row-top">
         ${sumMode ? `<input type="checkbox" class="sum-select-cb" data-id="${it.id}" ${selectedSumIds.has(it.id)?'checked':''}>` : ''}
@@ -1233,6 +1385,7 @@ function renderExpenses(){
         <div class="amount-wrap"><span class="cur">฿</span>
           <input class="amount-input" inputmode="decimal" data-id="${it.id}" data-f="amount" data-kind="exp" value="${toDisplayAmount(rec.amount)}" placeholder="0">
         </div>
+        ${partial ? `<div class="pay-status" data-id="${it.id}">${payStatusText(it, rec)}</div>` : ''}
         <div class="paid-row">
           ${rec.paid?`<span class="paid-date-wrap"><input type="date" class="paid-date-input" data-id="${it.id}" data-kind="exp" value="${rec.paidDate||''}"><span>${formatPaidDate(rec.paidDate)}</span></span>`:'<span></span>'}
           <label class="paidbox"><input type="checkbox" data-id="${it.id}" data-f="paid" data-kind="exp" ${rec.paid?'checked':''}> จ่ายแล้ว</label>
@@ -1243,6 +1396,7 @@ function renderExpenses(){
   });
   document.getElementById('expTotalV').textContent = fmt(total);
   document.getElementById('expPaidV').textContent = fmt(paid);
+  document.getElementById('expUnpaidV').textContent = fmt(total-paid);
   const income = Number(state.income[curKey])||0;
   updateExpRemain(income-total);
   document.getElementById('incomeInput').value = toDisplayAmount(state.income[curKey]);
@@ -1275,24 +1429,26 @@ function monthTotals(key){
   return { cardTotal, expTotal, outTotal: expTotal, income };
 }
 
-function renderFieldSummary(list, todayKey, field, icon, emptyLabel){
-  const expM = state.expenseMonthly[todayKey] || {};
-  const byVal = {};
+function renderFieldSummary(list, key, field, icon, emptyLabel){
+  const expM = state.expenseMonthly[key] || {};
+  const byVal = {}, byPaid = {};
   state.expenseItems.forEach(it=>{
     const rec = expM[it.id];
     const amt = rec ? Number(rec.amount)||0 : 0;
     if(amt<=0) return;
     const val = it[field] || emptyLabel;
     byVal[val] = (byVal[val]||0) + amt;
+    byPaid[val] = (byPaid[val]||0) + amountPaidOf(it, rec);
   });
 
   const keys = Object.keys(byVal);
   if(keys.length===0){
-    list.innerHTML = `<div class="sum-empty">ยังไม่มีค่าใช้จ่ายเดือนนี้ให้แยก 🌱<br>ตั้งค่าได้จากหน้าค่าใช้จ่าย</div>`;
+    list.insertAdjacentHTML('beforeend', `<div class="sum-empty">ยังไม่มีค่าใช้จ่ายใน${monthLabelFromKey(key)}ให้แยก 🌱<br>ตั้งค่าได้จากหน้าค่าใช้จ่าย</div>`);
     return;
   }
 
   const total = keys.reduce((s,c)=>s+byVal[c],0);
+  const paidTotal = keys.reduce((s,c)=>s+byPaid[c],0);
   const maxVal = Math.max(...keys.map(c=>byVal[c]));
   const sorted = keys.sort((a,b)=>byVal[b]-byVal[a]);
 
@@ -1301,11 +1457,12 @@ function renderFieldSummary(list, todayKey, field, icon, emptyLabel){
   header.style.padding = '4px 4px 12px';
   header.style.textAlign = 'left';
   header.style.color = 'var(--ink-soft)';
-  header.textContent = `📅 ${monthLabelFromKey(todayKey)} · รวม ${fmt(total)}`;
+  header.textContent = `รวม ${fmt(total)} · ✅ จ่ายแล้ว ${fmt(paidTotal)} · ⏳ ยังไม่จ่าย ${fmt(total-paidTotal)}`;
   list.appendChild(header);
 
   sorted.forEach(val=>{
     const v = byVal[val];
+    const p = byPaid[val] || 0;
     const pct = Math.round((v/maxVal)*100);
     const share = total>0 ? Math.round((v/total)*100) : 0;
     const row = document.createElement('div');
@@ -1317,7 +1474,7 @@ function renderFieldSummary(list, todayKey, field, icon, emptyLabel){
         <span class="sum-net pos" style="color:var(--ink);">${fmt(v)}</span>
       </div>
       <div class="sum-bar-track"><div class="sum-bar-fill" style="width:${pct}%"></div></div>
-      <div class="sum-item-bottom"><span>${share}% ของค่าใช้จ่ายทั้งหมด</span></div>
+      <div class="sum-item-bottom"><span>${share}% ของค่าใช้จ่ายทั้งหมด</span><span>✅ ${fmt(p)} · ⏳ ${fmt(v-p)}</span></div>
     `;
     list.appendChild(row);
   });
@@ -1330,6 +1487,7 @@ function renderChannelSummary(list, todayKey){
 }
 
 function renderInsights(list, todayKey){
+  const mLbl = todayKey===monthKey(new Date()) ? 'เดือนนี้' : monthLabelFromKey(todayKey);
   const t = monthTotals(todayKey);
   const prevKey = prevMonthKeyOf(todayKey);
   const tPrev = monthTotals(prevKey);
@@ -1346,9 +1504,9 @@ function renderInsights(list, todayKey){
     const diff = t.outTotal - tPrev.outTotal;
     const pct = Math.round((diff/tPrev.outTotal)*100);
     let msg;
-    if(pct > 10) msg = `⚠️ เดือนนี้ใช้จ่ายเพิ่มขึ้น ${pct}% จากเดือนที่แล้ว (${fmt(tPrev.outTotal)} → ${fmt(t.outTotal)})`;
-    else if(pct < -10) msg = `✅ เดือนนี้ใช้จ่ายลดลง ${Math.abs(pct)}% จากเดือนที่แล้ว เยี่ยมมาก!`;
-    else msg = `ใช้จ่ายใกล้เคียงเดือนที่แล้ว (${pct>=0?'+':''}${pct}%)`;
+    if(pct > 10) msg = `⚠️ ${mLbl}ใช้จ่ายเพิ่มขึ้น ${pct}% จากเดือนก่อนหน้า (${fmt(tPrev.outTotal)} → ${fmt(t.outTotal)})`;
+    else if(pct < -10) msg = `✅ ${mLbl}ใช้จ่ายลดลง ${Math.abs(pct)}% จากเดือนก่อนหน้า เยี่ยมมาก!`;
+    else msg = `ใช้จ่ายใกล้เคียงเดือนก่อนหน้า (${pct>=0?'+':''}${pct}%)`;
     cards.push({ title:'📈 แนวโน้มค่าใช้จ่าย', body: msg });
   }
 
@@ -1381,11 +1539,11 @@ function renderInsights(list, todayKey){
   }
 
   if(t.cardTotal>0){
-    cards.push({ title:'💳 บิล/บัตรเดือนนี้', body: `มีบิลและบัตรรวม ${fmt(t.cardTotal)} ที่ต้องจ่าย (แยกจากยอดค่าใช้จ่ายด้านบน)` });
+    cards.push({ title:'💳 บิล/บัตร', body: `มีบิลและบัตรรวม ${fmt(t.cardTotal)} ที่ต้องจ่าย (แยกจากยอดค่าใช้จ่ายด้านบน)` });
   }
 
   if(cards.length===0){
-    list.innerHTML = '<div class="sum-empty">ยังไม่มีข้อมูลพอให้วิเคราะห์ 💡</div>';
+    list.insertAdjacentHTML('beforeend', '<div class="sum-empty">ยังไม่มีข้อมูลพอให้วิเคราะห์ 💡</div>');
     return;
   }
   cards.forEach(c=>{
@@ -1402,6 +1560,12 @@ function renderInstallments(){
   if(!list) return; // not rendered yet at very first load
   list.innerHTML = '';
 
+  // always judged "as of" the real current month, no matter which month was last browsed
+  const asOfKey = monthKey(new Date());
+  ensureMonth(state, asOfKey);
+  const asOfEl = document.getElementById('instAsOf');
+  if(asOfEl) asOfEl.textContent = `ข้อมูล ณ ${monthLabelFromKey(asOfKey)} · งวดของเดือนก่อนหน้านับว่าจ่ายแล้ว ส่วนงวดเดือนนี้นับเมื่อกด "จ่ายแล้ว"`;
+
   const all = [
     ...state.cards.map(c=>({item:c, kind:'card'})),
     ...state.expenseItems.map(it=>({item:it, kind:'exp'}))
@@ -1415,32 +1579,40 @@ function renderInstallments(){
 
   let totalRemain = 0;
   all.forEach(({item, kind})=>{
-    const n = currentInstallmentNumber(item, curKey);
-    const total = item.installment.total;
+    const total = Number(item.installment.total)||0;
+    const n = currentInstallmentNumber(item, asOfKey);
     const store = kind==='card' ? state.cardMonthly : state.expenseMonthly;
-    const rec = (store[curKey]||{})[item.id];
+    const rec = (store[asOfKey]||{})[item.id];
     const monthlyAmount = rec ? Number(rec.amount)||0 : 0;
     const currentPaid = !!(rec && rec.paid);
-    const done = n > total || (n === total && currentPaid);
-    // if this month's installment is already marked paid, it no longer
-    // counts toward what's still owed
-    const remainingMonths = done ? 0 : Math.max(0, total - n + (currentPaid ? 0 : 1));
+
+    let paidCount, notStarted = false;
+    if(n < 1){ paidCount = 0; notStarted = true; }
+    else if(n > total){ paidCount = total; }
+    else { paidCount = (n-1) + (currentPaid ? 1 : 0); }
+    const remainingMonths = Math.max(0, total - paidCount);
+    const done = remainingMonths === 0;
     const remainingAmount = remainingMonths * monthlyAmount;
     totalRemain += remainingAmount;
 
-    const pct = Math.min(100, Math.max(0, Math.round(((n-1)/total)*100)));
+    const pct = total>0 ? Math.min(100, Math.round((paidCount/total)*100)) : 0;
+    const badge = done ? 'ครบแล้ว ✅' : (notStarted ? 'ยังไม่เริ่ม' : `งวดที่ ${n}/${total}`);
+    let note = '';
+    if(!done && !notStarted && n>=1 && n<=total) note = currentPaid ? ' · งวดนี้จ่ายแล้ว ✅' : ' · งวดนี้ยังไม่จ่าย';
+
     const row = document.createElement('div');
     row.className = 'inst-row';
     row.innerHTML = `
       <div class="inst-row-top">
         <span class="name">${kind==='card'?'💳':'🧾'} ${escapeHtml(item.name)}</span>
-        <span class="prog">${done ? 'ครบแล้ว ✅' : `${n}/${total}`}</span>
+        <span class="prog">${badge}</span>
       </div>
       <div class="inst-bar-track"><div class="inst-bar-fill" style="width:${pct}%"></div></div>
       <div class="inst-row-bottom">
         <span>฿${monthlyAmount.toLocaleString('en-US')}/เดือน</span>
         <span>${done ? 'จ่ายครบแล้ว' : `เหลือ ${remainingMonths} งวด · ${fmt(remainingAmount)}`}</span>
       </div>
+      <div class="inst-stats">ทั้งหมด ${total} งวด · จ่ายแล้ว ${paidCount} งวด · คงเหลือ ${remainingMonths} งวด${note}</div>
     `;
     list.appendChild(row);
   });
@@ -1448,23 +1620,63 @@ function renderInstallments(){
   document.getElementById('instTotalRemainV').textContent = fmt(totalRemain);
 }
 
+// month chosen in the summary tab — tapping a month in "รายเดือน" sets it, and
+// the หมวดหมู่ / ช่องทาง / วิเคราะห์ views then show that month
+let sumMonthKey = null;
+function sumDataKeys(todayKey){
+  const keys = new Set([
+    ...Object.keys(state.cardMonthly||{}),
+    ...Object.keys(state.expenseMonthly||{}),
+    ...Object.keys(state.income||{})
+  ]);
+  const arr = [...keys].filter(k=>k<=todayKey).sort();
+  if(arr.indexOf(todayKey)===-1) arr.push(todayKey);
+  return arr;
+}
+function renderSumMonthPicker(list, selKey, todayKey){
+  const keys = sumDataKeys(todayKey);
+  const i = keys.indexOf(selKey);
+  const prev = i>0 ? keys[i-1] : '';
+  const next = i>=0 && i<keys.length-1 ? keys[i+1] : '';
+  const bar = document.createElement('div');
+  bar.className = 'sum-month-picker';
+  bar.innerHTML = `<button data-go="${prev}" ${prev?'':'disabled'}>‹</button>
+    <div class="lbl">📅 ${monthLabelFromKey(selKey)}${selKey===todayKey?' (เดือนนี้)':''}</div>
+    <button data-go="${next}" ${next?'':'disabled'}>›</button>`;
+  bar.querySelectorAll('button[data-go]').forEach(b=>b.addEventListener('click', ()=>{
+    if(b.dataset.go){ sumMonthKey = b.dataset.go; renderSummary(); }
+  }));
+  list.appendChild(bar);
+}
+
 function renderSummary(){
   const list = document.getElementById('summaryList');
   list.innerHTML = '';
 
   const todayKey = monthKey(new Date());
+  const allKeys = sumDataKeys(todayKey);
+  const selKey = (sumMonthKey && allKeys.indexOf(sumMonthKey)!==-1) ? sumMonthKey : todayKey;
 
   if(sumView==='category'){
-    renderCategorySummary(list, todayKey);
+    renderSumMonthPicker(list, selKey, todayKey);
+    renderCategorySummary(list, selKey);
     return;
   }
   if(sumView==='channel'){
-    renderChannelSummary(list, todayKey);
+    renderSumMonthPicker(list, selKey, todayKey);
+    renderChannelSummary(list, selKey);
     return;
   }
   if(sumView==='insights'){
-    renderInsights(list, todayKey);
+    renderSumMonthPicker(list, selKey, todayKey);
+    renderInsights(list, selKey);
     return;
+  }
+  if(sumView==='month'){
+    const hint = document.createElement('div');
+    hint.className = 'sum-hint';
+    hint.textContent = `👆 แตะที่เดือนเพื่อเลือก แล้วดูรายละเอียดของเดือนนั้นในแท็บ หมวดหมู่ / ช่องทาง / วิเคราะห์ (กำลังเลือก: ${monthLabelFromKey(selKey)})`;
+    list.appendChild(hint);
   }
 
   // collect every month key that has any data at all, but only ones that
@@ -1484,7 +1696,7 @@ function renderSummary(){
 
   let entries;
   if(sumView==='month'){
-    entries = sortedKeys.map(k=>({ label: monthLabelFromKey(k), ...monthTotals(k) }));
+    entries = sortedKeys.map(k=>({ key:k, label: monthLabelFromKey(k), ...monthTotals(k) }));
   }else{
     const byYear = {};
     sortedKeys.forEach(k=>{
@@ -1508,8 +1720,12 @@ function renderSummary(){
     const net = e.income - e.outTotal;
     const pct = Math.min(100, Math.round((e.outTotal/maxOut)*100));
     const row = document.createElement('div');
-    row.className = 'sum-item';
+    row.className = 'sum-item' + (sumView==='month' && e.key===selKey ? ' sel' : '');
     row.style.marginBottom = '8px';
+    if(sumView==='month'){
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', ()=>{ sumMonthKey = e.key; renderSummary(); });
+    }
     row.innerHTML = `
       <div class="sum-item-top">
         <span class="label">${escapeHtml(e.label)}</span>
@@ -1920,10 +2136,182 @@ document.getElementById('addCard').addEventListener('click', addNewCard);
 document.getElementById('addCardTop').addEventListener('click', addNewCard);
 document.getElementById('addExp').addEventListener('click', addNewExpense);
 document.getElementById('addExpTop').addEventListener('click', addNewExpense);
-document.getElementById('fabAdd').addEventListener('click', ()=>{
-  if(activeTab==='cards') addNewCard();
-  else addNewExpense();
+
+// ---- quick record (shared by the quick-add screen and the + sheet) ----
+function refreshChannelSuggestions(){
+  const el = document.getElementById('qaChannelList');
+  if(el) el.innerHTML = getAllKnownValues('channel').map(v=>`<option value="${escapeHtml(v)}">`).join('');
+}
+function recordQuickExpense(amt, channel){
+  channel = (channel||'').trim();
+  const key = monthKey(new Date());
+  ensureMonth(state, key);
+  let it;
+  if(channel){
+    // same channel -> same item, so amounts accumulate into one running total
+    it = state.expenseItems.find(x=>x.channel && x.channel.toLowerCase()===channel.toLowerCase());
+    if(!it){
+      it = {id:uid(), name:channel, channel:channel, sortIndex:Date.now()};
+      state.expenseItems.push(it);
+    }
+  }else{
+    it = {id:uid(), name:'รายการด่วน', sortIndex:Date.now()};
+    state.expenseItems.push(it);
+  }
+  if(!state.expenseMonthly[key][it.id]) state.expenseMonthly[key][it.id] = {amount:0, paid:false};
+  const rec = state.expenseMonthly[key][it.id];
+  ensurePaidAmount(it, rec);               // keep what was already paid before adding
+  rec.amount = (Number(rec.amount)||0) + amt;
+  rec.lastRecorded = new Date().toISOString();
+  if(!rec.log) rec.log = [];
+  rec.log.push({ amt, at: rec.lastRecorded, paid:false });
+  if(rec.log.length > 50) rec.log = rec.log.slice(-50);
+  syncPaidFlag(it, rec);                   // new entry is unpaid -> checkbox un-ticks, old paid amount stays
+  pushHistory();
+  scheduleSave();
+  return {it, rec, key};
+}
+
+function openQuickSheet(){
+  refreshChannelSuggestions();
+  document.getElementById('qsAmount').value = '';
+  document.getElementById('qsChannel').value = '';
+  document.getElementById('catModalBackdrop').style.display = 'block';
+  document.getElementById('quickSheet').style.display = 'block';
+  setTimeout(()=>document.getElementById('qsAmount').focus(), 60);
+}
+function closeQuickSheet(){
+  document.getElementById('quickSheet').style.display = 'none';
+  document.getElementById('catModalBackdrop').style.display = 'none';
+}
+function saveQuickSheet(){
+  const amtEl = document.getElementById('qsAmount');
+  const amt = Number(amtEl.value)||0;
+  if(amt<=0){ amtEl.focus(); return; }
+  recordQuickExpense(amt, document.getElementById('qsChannel').value);
+  renderAll();
+  amtEl.value = '';
+  document.getElementById('qsChannel').value = '';
+  refreshChannelSuggestions();
+  const c = document.getElementById('qsConfirm');
+  c.classList.add('show');
+  setTimeout(()=>c.classList.remove('show'), 1200);
+  amtEl.focus();
+}
+document.getElementById('fabAdd').addEventListener('click', openQuickSheet);
+document.getElementById('qsSave').addEventListener('click', saveQuickSheet);
+document.getElementById('qsChannel').addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveQuickSheet(); });
+document.getElementById('qsClose').addEventListener('click', closeQuickSheet);
+document.getElementById('qsAddExp').addEventListener('click', ()=>{
+  closeQuickSheet();
+  const t = document.querySelector('.bottom-nav .tab[data-tab="expenses"]'); if(t) t.click();
+  addNewExpense();
 });
+document.getElementById('qsAddCard').addEventListener('click', ()=>{
+  closeQuickSheet();
+  const t = document.querySelector('.bottom-nav .tab[data-tab="cards"]'); if(t) t.click();
+  addNewCard();
+});
+
+// ---- history of quick-add entries: edit amount / date, tick paid, delete ----
+let histTargetId = null;
+function histCtx(){
+  const it = state.expenseItems.find(x=>x.id===histTargetId);
+  const rec = it && state.expenseMonthly[curKey] ? state.expenseMonthly[curKey][it.id] : null;
+  return {it, rec};
+}
+function openHistModal(itemId){
+  histTargetId = itemId;
+  renderHistModal();
+  document.getElementById('catModalBackdrop').style.display = 'block';
+  document.getElementById('histModal').style.display = 'block';
+}
+function closeHistModal(){
+  histTargetId = null;
+  document.getElementById('histModal').style.display = 'none';
+  document.getElementById('catModalBackdrop').style.display = 'none';
+}
+function renderHistModal(){
+  const {it, rec} = histCtx();
+  if(!it || !rec){ closeHistModal(); return; }
+  ensurePaidAmount(it, rec);
+  const partial = isPartialItem(it);
+  const log = rec.log || [];
+  document.getElementById('histModalTitle').textContent = `📜 ประวัติ ${it.name} · ${monthLabelFromKey(curKey)}`;
+  const listEl = document.getElementById('histModalList');
+  if(log.length===0){
+    listEl.innerHTML = '<div class="sum-empty" style="padding:14px 0;">ไม่มีรายการบันทึกแล้ว</div>';
+  }else{
+    listEl.innerHTML = log.map((e,i)=>({e,i})).reverse().map(({e,i})=>`
+      <div class="hist-row" data-idx="${i}">
+        ${partial ? `<input type="checkbox" class="hist-paid" ${e.paid?'checked':''} title="จ่ายแล้ว">` : ''}
+        <span class="paid-date-wrap"><input type="date" class="hist-date-input" value="${toLocalYMD(e.at)}"><span>${formatPaidDate(e.at)}</span></span>
+        <span class="hist-baht">฿</span><input type="number" inputmode="decimal" step="any" class="hist-amt" value="${e.amt}">
+        <button class="hist-del" title="ลบรายการนี้">✕</button>
+      </div>`).join('');
+  }
+  const amt = Number(rec.amount)||0, pa = amountPaidOf(it, rec);
+  const other = amt - log.reduce((sum,e)=>sum+(Number(e.amt)||0), 0);
+  document.getElementById('histModalTotal').innerHTML =
+    `รวม ${fmt(amt)}` + (partial ? ` · ✅ จ่ายแล้ว ${fmt(pa)} · ⏳ ยังไม่จ่าย ${fmt(amt-pa)}` : '') +
+    (Math.abs(other)>0.005 ? `<br><span style="color:var(--ink-faint)">รวมยอดที่ไม่อยู่ในประวัติ ${fmt(other)}</span>` : '');
+}
+function afterHistChange(){
+  const {it, rec} = histCtx();
+  if(it && rec){
+    syncPaidFlag(it, rec);
+    const log = rec.log || [];
+    if(log.length) rec.lastRecorded = log.reduce((m,e)=>e.at>m?e.at:m, log[0].at);
+    else delete rec.lastRecorded;
+  }
+  pushHistory();
+  scheduleSave();
+  renderExpenses();
+  renderInstallments();
+  renderHistModal();
+}
+document.getElementById('histModalList').addEventListener('change', (ev)=>{
+  const t = ev.target;
+  const rowEl = t.closest('.hist-row'); if(!rowEl) return;
+  const {it, rec} = histCtx();
+  const idx = Number(rowEl.dataset.idx);
+  if(!it || !rec || !rec.log || !rec.log[idx]) return;
+  ensurePaidAmount(it, rec);
+  const e = rec.log[idx];
+  if(t.classList.contains('hist-amt')){
+    const nv = parseFloat(t.value);
+    if(!isFinite(nv) || nv<0){ t.value = e.amt; return; }
+    const delta = nv - (Number(e.amt)||0);
+    e.amt = nv;
+    rec.amount = Math.max(0, (Number(rec.amount)||0) + delta);
+    if(isPartialItem(it) && e.paid) rec.paidAmount = (Number(rec.paidAmount)||0) + delta;
+  }else if(t.classList.contains('hist-paid')){
+    e.paid = t.checked;
+    rec.paidAmount = (Number(rec.paidAmount)||0) + (t.checked ? (Number(e.amt)||0) : -(Number(e.amt)||0));
+    if(t.checked){ rec.lastPaidAt = todayLocalStr(); rec.lastPaidAmt = Number(e.amt)||0; }
+  }else if(t.classList.contains('hist-date-input')){
+    if(!t.value) return;
+    const [y,m,d] = t.value.split('-').map(Number);
+    e.at = new Date(y, m-1, d, 12, 0, 0).toISOString();
+  }else return;
+  afterHistChange();
+});
+document.getElementById('histModalList').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.hist-del'); if(!btn) return;
+  const rowEl = btn.closest('.hist-row');
+  const {it, rec} = histCtx();
+  const idx = Number(rowEl.dataset.idx);
+  if(!it || !rec || !rec.log || !rec.log[idx]) return;
+  if(!confirm('ลบรายการนี้ออกจากประวัติ (ยอดรวมจะลดลงตามจำนวนนี้)?')) return;
+  ensurePaidAmount(it, rec);
+  const removed = rec.log.splice(idx, 1)[0];
+  rec.amount = Math.max(0, (Number(rec.amount)||0) - (Number(removed.amt)||0));
+  if(isPartialItem(it) && removed.paid) rec.paidAmount = (Number(rec.paidAmount)||0) - (Number(removed.amt)||0);
+  if(rec.log.length===0) delete rec.log;
+  afterHistChange();
+});
+document.getElementById('histModalClose').addEventListener('click', closeHistModal);
+document.getElementById('catModalBackdrop').addEventListener('click', ()=>{ closeHistModal(); closeQuickSheet(); });
 
 document.getElementById('clearCardsMonth').addEventListener('click', ()=>{
   if(!confirm('ล้างยอดของบัตร/บิลทั้งหมดในเดือนนี้?')) return;
@@ -1947,7 +2335,7 @@ document.getElementById('clearExpPaidOnly').addEventListener('click', ()=>{
   if(!confirm('ล้างสถานะ "จ่ายแล้ว" ทั้งหมดในเดือนนี้ (ยอดเงินจะยังคงอยู่)?')) return;
   state.expenseItems.forEach(it=>{
     const rec = state.expenseMonthly[curKey][it.id];
-    if(rec) rec.paid = false;
+    if(rec){ if(isPartialItem(it)) setAllPaid(it, rec, false); else rec.paid = false; }
   });
   pushHistory();
   scheduleSave();
@@ -1975,7 +2363,7 @@ document.getElementById('copyPrevExp').addEventListener('click', ()=>{
   ensureMonth(state, curKey);
   state.expenseItems.forEach(it=>{
     const prevRec = prevData[it.id];
-    if(prevRec) state.expenseMonthly[curKey][it.id].amount = prevRec.amount;
+    if(prevRec && !it.channel) state.expenseMonthly[curKey][it.id].amount = prevRec.amount;
   });
   pushHistory();
   scheduleSave();
@@ -2052,11 +2440,7 @@ document.body.addEventListener('click', (e)=>{
     }
 
     if(field==='history'){
-      const kind = editPill.dataset.kind;
-      const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
-      if(!rec || !rec.log || rec.log.length===0){ alert('ยังไม่มีประวัติการบันทึก'); return; }
-      const lines = rec.log.slice().reverse().map(e=>`${formatPaidDate((e.at||'').slice(0,10))} — ฿${(Number(e.amt)||0).toLocaleString('en-US')}`);
-      alert('📜 ประวัติการบันทึกด่วน (ล่าสุดก่อน):\n\n' + lines.join('\n'));
+      openHistModal(id);
       return;
     }
 
@@ -2094,10 +2478,11 @@ function recalcExpTotals(){
   state.expenseItems.forEach(it=>{
     const rec = state.expenseMonthly[curKey][it.id];
     total += Number(rec.amount)||0;
-    if(rec.paid) paid += Number(rec.amount)||0;
+    paid += amountPaidOf(it, rec);
   });
   document.getElementById('expTotalV').textContent = fmt(total);
   document.getElementById('expPaidV').textContent = fmt(paid);
+  document.getElementById('expUnpaidV').textContent = fmt(total-paid);
   const income = Number(state.income[curKey])||0;
   updateExpRemain(income-total);
   renderInstallments();
@@ -2123,8 +2508,11 @@ document.body.addEventListener('input', (e)=>{
   if(field==='amount'){
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){
+      const itP = kind==='card' ? null : state.expenseItems.find(x=>x.id===id);
+      if(itP && isPartialItem(itP)) ensurePaidAmount(itP, rec);
       rec.amount = parseAmount(t.value);
       propagateForwardAmount(kind, id, curKey, rec.amount);
+      if(itP && isPartialItem(itP)){ syncPaidFlag(itP, rec); refreshPayStatus(itP, rec); }
     }
     scheduleSave();
     // Update only the totals, never rebuild the list here — rebuilding would
@@ -2140,8 +2528,13 @@ document.body.addEventListener('change', (e)=>{
     const id = t.dataset.id, kind = t.dataset.kind;
     const rec = kind==='card' ? state.cardMonthly[curKey][id] : state.expenseMonthly[curKey][id];
     if(rec){
-      rec.paid = t.checked;
-      rec.paidDate = t.checked ? new Date().toISOString().slice(0,10) : null;
+      const itP = kind==='exp' ? state.expenseItems.find(x=>x.id===id) : null;
+      if(itP && isPartialItem(itP)){
+        setAllPaid(itP, rec, t.checked);
+      }else{
+        rec.paid = t.checked;
+        rec.paidDate = t.checked ? todayLocalStr() : null;
+      }
     }
     pushHistory();
     scheduleSave();
@@ -2435,43 +2828,13 @@ try{
     const qaChannel = document.getElementById('qaChannel');
     const qaConfirm = document.getElementById('qaConfirm');
     const qaChannelList = document.getElementById('qaChannelList');
-    function refreshChannelSuggestions(){
-      qaChannelList.innerHTML = getAllKnownValues('channel').map(v=>`<option value="${escapeHtml(v)}">`).join('');
-    }
     refreshChannelSuggestions();
     qaAmount.focus();
     function saveQuickAdd(){
       const amt = Number(qaAmount.value)||0;
       const channel = qaChannel.value.trim();
       if(amt<=0){ qaAmount.focus(); return; }
-      const key = monthKey(new Date());
-      ensureMonth(state, key);
-
-      let it;
-      if(channel){
-        // reuse the same item across every quick-add for this channel, so
-        // amounts accumulate into one running total instead of piling up
-        // as separate line items
-        it = state.expenseItems.find(x=>x.channel && x.channel.toLowerCase()===channel.toLowerCase());
-        if(!it){
-          it = {id:uid(), name:channel, channel:channel, sortIndex:Date.now()};
-          state.expenseItems.push(it);
-        }
-      }else{
-        it = {id:uid(), name:'รายการด่วน', sortIndex:Date.now()};
-        state.expenseItems.push(it);
-      }
-
-      if(!state.expenseMonthly[key][it.id]) state.expenseMonthly[key][it.id] = {amount:0, paid:false};
-      const rec = state.expenseMonthly[key][it.id];
-      rec.amount = (Number(rec.amount)||0) + amt;
-      rec.lastRecorded = new Date().toISOString();
-      if(!rec.log) rec.log = [];
-      rec.log.push({ amt, at: rec.lastRecorded });
-      if(rec.log.length > 50) rec.log = rec.log.slice(-50);
-
-      pushHistory();
-      scheduleSave();
+      recordQuickExpense(amt, channel);
       qaAmount.value = '';
       qaChannel.value = '';
       refreshChannelSuggestions();
